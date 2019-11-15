@@ -1,4 +1,4 @@
-classdef nirsplotLoadFileGUI_exported < matlab.apps.AppBase
+classdef nirsplotLoadFileGUI < matlab.apps.AppBase
 
     % Properties that correspond to app components
     properties (Access = public)
@@ -76,7 +76,7 @@ classdef nirsplotLoadFileGUI_exported < matlab.apps.AppBase
             app.windowSec = app.LengthsecSpinner.Value;
             app.windowOverlap = (app.WindowsoverlapSlider.Value)/100;
             
-            app.reportTable = nirsplotGUI_v3(app.rawDotNirs, [app.bpFmin, app.bpFmax],...
+            app.reportTable = nirsplot(app.rawDotNirs, [app.bpFmin, app.bpFmax],...
                 app.windowSec,app.windowOverlap);
         end
     end
@@ -225,7 +225,7 @@ classdef nirsplotLoadFileGUI_exported < matlab.apps.AppBase
     methods (Access = public)
 
         % Construct app
-        function app = nirsplotLoadFileGUI_exported
+        function app = nirsplotLoadFileGUI
 
             % Create UIFigure and components
             createComponents(app)
