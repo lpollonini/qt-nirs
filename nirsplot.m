@@ -7,10 +7,11 @@ function report_table = nirsplot(rawDotNirs,fcut,window,overlap,lambda_mask)
 % (default: [1 1 ...], the first two encountered, no matter how many there are)
 
 close all
-global nSources nDetectors nChannels secDur sampDur raw qMats qltyThld
+global nSources nDetectors nChannels secDur sampDur raw qMats qltyThld mergewoiFlag
 
 report_table = []; 
 qltyThld = 0.9;
+mergewoiFlag = true;
 save_report_table = false;
 
 if nargin < 4
@@ -351,7 +352,7 @@ for j = 1:n_windows
     interval = (j-1)*window_samples-(j-1)*(overlap_samples)+1 : j*window_samples-(j-1)*(overlap_samples);
     cardiac_windows(:,:,:,j) = cardiac_data(:,interval,:);
 end
-for j = 1:n_windows
+parfor j = 1:n_windows
     cardiac_window = cardiac_windows(:,:,:,j);
     sci_array_channels = zeros(1,size(cardiac_window,3));
     power_array_channels = zeros(1,size(cardiac_window,3));
@@ -431,7 +432,7 @@ end
 
 %-------------------------------------------------------------------------
 function [woiMat_, poiMat_] = getPOI(window_samples,n_windows)
-global raw fs nChannels sampDur 
+global raw fs nChannels mergewoiFlag
 % Assuming no overlapping conditions
 
 % The maximum number of allowed samples is window_samples*n_windows to consider
@@ -445,6 +446,7 @@ medIntTime = median(interOnsetTimes);
 iqrIntTime = iqr(interOnsetTimes);
 blckDurTime = medIntTime + (0.5*iqrIntTime);
 blckDurSamp = round(fs*blckDurTime);
+blckDurWind = floor(blckDurSamp/window_samples);
 
 for i=1:nOnsets
     poi( (idxStim(i)-blckDurSamp): (idxStim(i)+blckDurSamp) ) = 1;
@@ -453,7 +455,29 @@ poi = poi(1:allowed_samp)';
 poiMat_ = repmat(poi,nChannels,1);
 woi = zeros(1,n_windows);
 for i=1:n_windows
-    woi(i) = sum(poi( (i-1)*window_samples + 1 : i*window_samples)) >= (window_samples)/2;
+    woi(i) = sum(poi( (i-1)*window_samples + 1 : i*window_samples)) >= (window_samples/2);
+end
+woiblank = 0;
+idxInit = [];
+woitmp = woi;
+for i =1:n_windows
+    if woitmp(i) == 0
+        if isempty(idxInit)
+            idxInit = i;
+        end
+       woiblank = woiblank +1;
+    else
+        if ~isempty(idxInit)
+            if (woiblank <= blckDurWind) 
+               woitmp(idxInit:i) = 1;           
+            end
+            woiblank = 0;
+            idxInit = [];
+        end
+    end
+end
+if mergewoiFlag == true
+    woi = woitmp;
 end
 woiMat_ = repmat(woi,nChannels,1);
 end

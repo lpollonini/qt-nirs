@@ -2,11 +2,11 @@ classdef bpGoodQuality < matlab.apps.AppBase
 
     % Properties that correspond to app components
     properties (Access = public)
-        UIFigure              matlab.ui.Figure
-        barPlot               matlab.ui.control.UIAxes
-        ThresholdSliderLabel  matlab.ui.control.Label
-        ThresholdSlider       matlab.ui.control.Slider
-        ExporttonirsButton    matlab.ui.control.Button
+        ChannelselectionUIFigure  matlab.ui.Figure
+        barPlot                   matlab.ui.control.UIAxes
+        ThresholdSliderLabel      matlab.ui.control.Label
+        ThresholdSlider           matlab.ui.control.Slider
+        ExporttonirsButton        matlab.ui.control.Button
     end
 
     
@@ -35,7 +35,8 @@ classdef bpGoodQuality < matlab.apps.AppBase
             idxThl = qualityMats.gcl<qualityThld;
             app.bp.CData(idxThl,:) = repmat([0.6, 0.6, 0.6],sum(idxThl),1);
             app.bp.CData(~idxThl,:) = repmat([0 1 0],sum(~idxThl),1);
-            
+            app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
+
         end
 
         % Value changed function: ThresholdSlider
@@ -65,38 +66,39 @@ classdef bpGoodQuality < matlab.apps.AppBase
         % Create UIFigure and components
         function createComponents(app)
 
-            % Create UIFigure and hide until all components are created
-            app.UIFigure = uifigure('Visible', 'off');
-            app.UIFigure.Position = [100 100 640 480];
-            app.UIFigure.Name = 'UI Figure';
+            % Create ChannelselectionUIFigure and hide until all components are created
+            app.ChannelselectionUIFigure = uifigure('Visible', 'off');
+            app.ChannelselectionUIFigure.Position = [100 100 532 381];
+            app.ChannelselectionUIFigure.Name = 'Channel selection';
 
             % Create barPlot
-            app.barPlot = uiaxes(app.UIFigure);
+            app.barPlot = uiaxes(app.ChannelselectionUIFigure);
             title(app.barPlot, 'Good-quality Channels')
-            xlabel(app.barPlot, 'X')
-            ylabel(app.barPlot, 'Y')
-            app.barPlot.Position = [57 112 402 319];
+            xlabel(app.barPlot, 'Quality')
+            ylabel(app.barPlot, '# Channel')
+            app.barPlot.Position = [120 42 402 319];
 
             % Create ThresholdSliderLabel
-            app.ThresholdSliderLabel = uilabel(app.UIFigure);
+            app.ThresholdSliderLabel = uilabel(app.ChannelselectionUIFigure);
             app.ThresholdSliderLabel.HorizontalAlignment = 'right';
-            app.ThresholdSliderLabel.Position = [486 112 59 22];
+            app.ThresholdSliderLabel.Position = [16 14 59 22];
             app.ThresholdSliderLabel.Text = 'Threshold';
 
             % Create ThresholdSlider
-            app.ThresholdSlider = uislider(app.UIFigure);
+            app.ThresholdSlider = uislider(app.ChannelselectionUIFigure);
+            app.ThresholdSlider.MajorTicks = [0 10 20 30 40 50 60 70 80 90 100];
             app.ThresholdSlider.Orientation = 'vertical';
             app.ThresholdSlider.ValueChangedFcn = createCallbackFcn(app, @ThresholdSliderValueChanged, true);
             app.ThresholdSlider.ValueChangingFcn = createCallbackFcn(app, @ThresholdSliderValueChanging, true);
-            app.ThresholdSlider.Position = [566 121 3 303];
+            app.ThresholdSlider.Position = [44 58 3 303];
 
             % Create ExporttonirsButton
-            app.ExporttonirsButton = uibutton(app.UIFigure, 'push');
-            app.ExporttonirsButton.Position = [509 57 100 22];
+            app.ExporttonirsButton = uibutton(app.ChannelselectionUIFigure, 'push');
+            app.ExporttonirsButton.Position = [408 14 100 22];
             app.ExporttonirsButton.Text = 'Export to .nirs';
 
             % Show the figure after all components are created
-            app.UIFigure.Visible = 'on';
+            app.ChannelselectionUIFigure.Visible = 'on';
         end
     end
 
@@ -110,7 +112,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
             createComponents(app)
 
             % Register the app with App Designer
-            registerApp(app, app.UIFigure)
+            registerApp(app, app.ChannelselectionUIFigure)
 
             % Execute the startup function
             runStartupFcn(app, @(app)startupFcn(app, varargin{:}))
@@ -124,7 +126,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
         function delete(app)
 
             % Delete UIFigure when app is deleted
-            delete(app.UIFigure)
+            delete(app.ChannelselectionUIFigure)
         end
     end
 end
