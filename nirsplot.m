@@ -72,7 +72,7 @@ mainFig = figure('Units','normalized',...
 % Axes
 % SCI
 myAxDim.width = 0.9;
-myAxDim.height = 1/4*.78; % Four axes over the 80% of the figure
+myAxDim.height = (1/4)*0.75; % Four axes over the 80% of the figure
 myAxDim.xSep = 0.05;
 myAxDim.ySep = (1 - myAxDim.height*4) / 5;
 
@@ -80,25 +80,31 @@ pos.inspAx = [myAxDim.xSep,myAxDim.ySep+(0*(myAxDim.height+myAxDim.ySep)),...
     myAxDim.width,myAxDim.height];
 myAxes.inspector = axes(mainFig,'Units','normalized',...
     'Position',pos.inspAx,...
-    'Title','Inspection');
+    'Title','Inspector');
+myAxes.inspector.XLabel.String = 'Time (s)';
+myAxes.inspector.YLabel.String = 'Channel #';
+
 
 pos.comboAx = [myAxDim.xSep,myAxDim.ySep+(1*(myAxDim.height+myAxDim.ySep)),...
     myAxDim.width,myAxDim.height];
 myAxes.combo = axes(mainFig,'Units','normalized',...
     'Position',pos.comboAx,...
     'Title','Overall quality');
+myAxes.combo.YLabel.String = 'Channel #';
 
 pos.powerAx = [myAxDim.xSep,myAxDim.ySep+(2*(myAxDim.height+myAxDim.ySep)),...
     myAxDim.width,myAxDim.height];
 myAxes.power = axes(mainFig,'Units','normalized',...
     'Position',pos.powerAx,...
     'Title','Power peak');
+myAxes.power.YLabel.String = 'Channel #';
 
 pos.sciAx = [myAxDim.xSep,myAxDim.ySep+(3*(myAxDim.height+myAxDim.ySep)),...
     myAxDim.width,myAxDim.height];
 myAxes.sci = axes(mainFig,'Units','normalized',...
     'Position',pos.sciAx,...
     'Title','SCI');
+myAxes.sci.YLabel.String = 'Channel #';
 
 pos.inspectBtn = [myAxDim.xSep, (myAxDim.height+myAxDim.ySep),...
     0.08, myAxDim.ySep*0.8];
@@ -113,8 +119,8 @@ helpBtn = uicontrol(mainFig,'Style','pushbutton','String','?',...
     pos.helpBtn,'Callback', @showHelp);
 
 pos.bpBtn = [(pos.helpBtn(1)+pos.helpBtn(3))*1.15,...
-    pos.inspectBtn(2),0.05,pos.inspectBtn(4)];
-bpBtn = uicontrol(mainFig,'Style','pushbutton','String','GQ check',...
+    pos.inspectBtn(2),0.15,pos.inspectBtn(4)];
+bpBtn = uicontrol(mainFig,'Style','pushbutton','String','Channel selection',...
     'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
     pos.bpBtn,'Callback', @selectGoodChannels);
 
@@ -220,6 +226,8 @@ myAxes.sci.YLim =[1, nChannels];
 % myAxes.sci.XTickLabel = num2mstr(round(linspace(1,qMats.nWindows*qMats.sampPerWindow,8)));
 colormap(myAxes.sci,"gray");
 colorbar(myAxes.sci,"eastoutside","Ticks",[0 1]);
+myAxes.sci.YLabel.String = 'Channel #';
+myAxes.sci.YLabel.FontWeight = 'bold';
 
 % Power peak
 imPower = imagesc(myAxes.power,power_array);
@@ -228,6 +236,8 @@ myAxes.power.YLim =[1, nChannels];
 %myAxes.power.XLim =[1, size(power_array,2)];
 colormap(myAxes.power,"gray");
 colorbar(myAxes.power,"eastoutside","Ticks",[0:0.1;0.3]);
+myAxes.power.YLabel.String = 'Channel #';
+myAxes.power.YLabel.FontWeight = 'bold';
 
 % Combo quality
 imCombo = imagesc(myAxes.combo,combo_array);
@@ -236,11 +246,16 @@ myAxes.combo.YLim =[1, nChannels];
 %myAxes.combo.XLim =[1, size(combo_array,2)];
 colormap(myAxes.combo,[0 0 0;1 1 1]);
 colorbar(myAxes.combo,"eastoutside","Ticks",[0 1]);
+myAxes.combo.YLabel.String = 'Channel #';
+myAxes.combo.YLabel.FontWeight = 'bold';
 
 % For visual consistency among axes
 myAxes.inspector.YLimMode = 'manual';
+myAxes.inspector.YLabel.String = 'Channel #';
+myAxes.inspector.XLabel.String = 'Time (s)';
+myAxes.inspector.YLabel.FontWeight = 'bold';
+myAxes.inspector.XLabel.FontWeight = 'bold';
 colorbar(myAxes.inspector,'Visible','off');
-
 
 woiMatrgb = zeros(nChannels,qMats.nWindows,3);
 woiMatrgb(:,:,2) = woiMat;
@@ -273,10 +288,10 @@ YLimStd = [min(qMats.cardiacData(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all
    max(qMats.cardiacData(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all')]*1.05;
 XLimStd = myAxes.inspector.XLim;
 
-yLab = myAxes.inspector.YLim(1)+((myAxes.inspector.YLim(2)-myAxes.inspector.YLim(1))*0.71);
-xLab = myAxes.inspector.XLim(1)+((myAxes.inspector.XLim(2)-myAxes.inspector.XLim(1))*0.93);
-text(myAxes.inspector,xLab,yLab,['Channel:',num2str(iChannel)]);
-legend(myAxes.inspector,{'Lambda 1','Lambda 2'},'Box','off');
+%yLab = myAxes.inspector.YLim(1)+((myAxes.inspector.YLim(2)-myAxes.inspector.YLim(1))*0.71);
+%xLab = myAxes.inspector.XLim(1)+((myAxes.inspector.XLim(2)-myAxes.inspector.XLim(1))*0.93);
+%text(myAxes.inspector,xLab,yLab,['Channel:',num2str(iChannel)]);
+strLgnds = {'Lambda 1','Lambda 2'};
 
 if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.nWindows*qMats.sampPerWindow)
     xRect = 0.5; %Because of the offset at the begining of a window
@@ -290,17 +305,32 @@ if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.nWindows*qMats.sampPerWindow)
     impoiMat = imagesc(myAxes.inspector,'XData',...
         [raw.t(xLimWindow(1)),raw.t(xLimWindow(2))],...
         'YData',YLimStd,'CData',poiMatrgb,'AlphaData',alphaMat);
-    %myAxes.inspector.YLim = YLimStd;
-    myAxes.inspector.YLim = YLimStd;
-    myAxes.inspector.XLim = XLimStd;
+   
+    %onsets
+    [r,c] = size(raw.s);  
+    clrOnsets = [linspace(0.5,1,c)',...
+        linspace(0,0.5,c)',linspace(1,0,c)'];
+    for j=1:c
+        yOnset = (raw.s(xLimWindow(1):xLimWindow(2),j)*(YLimStd(2)-YLimStd(1))*0.25)-abs(YLimStd(1));
+        plot(myAxes.inspector,raw.t(xLimWindow(1):xLimWindow(2)),...
+            yOnset,'LineWidth',2,...
+            'Color',clrOnsets(j,:));
+        strLgnds(2+j) = {['Cond ',num2str(j)]};
+    end
+
 else
     xRect = iWindow-0.5;
     yRect = iChannel-0.5;
     wRect = 1;
     hRect = 1;
 end
-
 updateQPlots(qMats);
+myAxes.inspector.YLim = YLimStd;
+myAxes.inspector.XLim = XLimStd;
+myAxes.inspector.YLabel.String = ['Channel ', num2str(iChannel)];
+
+lgn = legend(myAxes.inspector,strLgnds,'Box','off');
+
 rectangle(myAxes.combo,'Position',[xRect yRect wRect hRect],...
     'EdgeColor','m','FaceColor','none','Linewidth',2);
 rectangle(myAxes.power,'Position',[xRect yRect wRect hRect],...
