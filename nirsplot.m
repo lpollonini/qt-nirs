@@ -7,11 +7,13 @@ function report_table = nirsplot(rawDotNirs,fcut,window,overlap,lambda_mask)
 % (default: [1 1 ...], the first two encountered, no matter how many there are)
 
 close all
-global nSources nDetectors nChannels secDur sampDur raw qMats qltyThld mergewoiFlag
+global nSources nDetectors nChannels secDur sampDur raw 
+global qMats qltyThld mergewoiFlag SDMeasListAct
 
 report_table = []; 
 qltyThld = 0.9;
 mergewoiFlag = true;
+SDMeasListAct = [];
 save_report_table = false;
 
 if nargin < 4
@@ -515,6 +517,7 @@ end
 %-------------------------------------------------------------------------
 function dotNirsOutput = selectGoodChannels(source, events)
 global qMats qltyThld
+SDMeasListAct = ~qMats.badLinks;
 bpGoodQuality(qMats, qltyThld);
 dotNirsOutput = 0;
 end

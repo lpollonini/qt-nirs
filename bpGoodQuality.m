@@ -6,7 +6,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
         barPlot                   matlab.ui.control.UIAxes
         ThresholdSliderLabel      matlab.ui.control.Label
         ThresholdSlider           matlab.ui.control.Slider
-        ExporttonirsButton        matlab.ui.control.Button
+        SaveButton                matlab.ui.control.Button
     end
 
     
@@ -15,6 +15,8 @@ classdef bpGoodQuality < matlab.apps.AppBase
         qThld % Threshold for marking good-quality channels
         bp %boxplot
         thldLn % threshold line
+        idxBadCh  % Indices of channels below the quality threhold
+        idxGoodCh % Indices of channels above the quality threhold
     end
     
 
@@ -25,17 +27,18 @@ classdef bpGoodQuality < matlab.apps.AppBase
         function startupFcn(app, qualityMats, qualityThld)
             app.qMats = qualityMats;
             app.qThld = qualityThld;            
-            app.bp = bar(app.barPlot,app.qMats.gcl,'Horizontal','on');
+            app.bp = bar(app.barPlot,fliplr(app.qMats.gcl),'Horizontal','on');
             app.bp.FaceColor = 'flat';
             app.barPlot.Box = 'on';
             app.barPlot.YLabel.String  = 'Channel';
             app.barPlot.XLim = [0,1];
             app.thldLn = xline(app.barPlot,app.qThld,'--r');
             app.ThresholdSlider.Value = round(app.qThld*100);
-            idxThl = qualityMats.gcl<qualityThld;
-            app.bp.CData(idxThl,:) = repmat([0.6, 0.6, 0.6],sum(idxThl),1);
-            app.bp.CData(~idxThl,:) = repmat([0 1 0],sum(~idxThl),1);
-            app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
+            app.idxBadCh = app.qMats.gcl<app.qThld;
+            app.idxGoodCh = ~app.idxBadCh;
+            app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
+            app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
+            %app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
 
         end
 
@@ -51,12 +54,18 @@ classdef bpGoodQuality < matlab.apps.AppBase
         function ThresholdSliderValueChanging(app, event)
             app.qThld  = (event.Value)/100;
             app.thldLn.Value = app.qThld;
-            %bar(app.barPlot,app.qMats.gcl,'Horizontal','on');
-            %app.bp = bar(app.barPlot,app.qMats.gcl,'Horizontal','on');
-            idxThl = app.qMats.gcl<app.qThld;
-            app.bp.CData(idxThl,:) = repmat([0.6, 0.6, 0.6],sum(idxThl),1);
-            app.bp.CData(~idxThl,:) = repmat([0 1 0],sum(~idxThl),1);
-            %xline(app.barPlot,app.qThld,'--r');           
+            app.idxBadCh = app.qMats.gcl<app.qThld;
+            app.idxGoodCh = ~app.idxBadCh;
+            app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
+            app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
+        end
+
+        % Button pushed function: SaveButton
+        function SaveButtonPushed(app, event)
+            % saving the quality threshold
+            assignin('caller','qltyThld',app.qThld);
+            % saving the indices of good-quality channels
+            assignin('caller','SDMeasListAct',app.idxGoodCh)
         end
     end
 
@@ -92,10 +101,11 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.ThresholdSlider.ValueChangingFcn = createCallbackFcn(app, @ThresholdSliderValueChanging, true);
             app.ThresholdSlider.Position = [44 58 3 303];
 
-            % Create ExporttonirsButton
-            app.ExporttonirsButton = uibutton(app.ChannelselectionUIFigure, 'push');
-            app.ExporttonirsButton.Position = [408 14 100 22];
-            app.ExporttonirsButton.Text = 'Export to .nirs';
+            % Create SaveButton
+            app.SaveButton = uibutton(app.ChannelselectionUIFigure, 'push');
+            app.SaveButton.ButtonPushedFcn = createCallbackFcn(app, @SaveButtonPushed, true);
+            app.SaveButton.Position = [425 14 83 22];
+            app.SaveButton.Text = 'Save';
 
             % Show the figure after all components are created
             app.ChannelselectionUIFigure.Visible = 'on';
