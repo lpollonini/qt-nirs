@@ -233,11 +233,12 @@ myAxes.sci.YLabel.FontWeight = 'bold';
 
 % Power peak
 imPower = imagesc(myAxes.power,power_array);
-myAxes.power.CLim = [0, 0.3];
+myAxes.power.CLim = [0, 0.12];
 myAxes.power.YLim =[1, nChannels];
 %myAxes.power.XLim =[1, size(power_array,2)];
 colormap(myAxes.power,"gray");
-colorbar(myAxes.power,"eastoutside","Ticks",[0:0.1;0.3]);
+colorbar(myAxes.power,"eastoutside","Ticks",[0 0.1 0.12]);
+%        h.TickLabels ={'0','0.10*','0.12'};
 myAxes.power.YLabel.String = 'Channel #';
 myAxes.power.YLabel.FontWeight = 'bold';
 
@@ -481,7 +482,16 @@ blckDurSamp = round(fs*blckDurTime);
 blckDurWind = floor(blckDurSamp/window_samples);
 
 for i=1:nOnsets
-    poi( (idxStim(i)-blckDurSamp): (idxStim(i)+blckDurSamp) ) = 1;
+    startPOI = idxStim(i)-blckDurSamp;
+    if startPOI < 1
+        startPOI = 1;
+    end
+    
+    endPOI = idxStim(i)+blckDurSamp;
+    if endPOI > allowed_samp
+        endPOI = allowed_samp;
+    end
+    poi(startPOI:endPOI) = 1;
 end
 poi = poi(1:allowed_samp)';
 poiMat_ = repmat(poi,nChannels,1);

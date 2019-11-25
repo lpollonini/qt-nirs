@@ -31,19 +31,19 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.qThld = qualityThld;
             app.raw = raw;
 %            app.rawFname = rawFname;
-            app.bp = bar(app.barPlot,fliplr(app.qMats.gcl),'Horizontal','on');
+            app.bp = bar(app.barPlot,flipud(app.qMats.gcl),'Horizontal','on');
             app.bp.FaceColor = 'flat';
             app.barPlot.Box = 'on';
             app.barPlot.YLabel.String  = 'Channel';
             app.barPlot.XLim = [0,1];
+            app.barPlot.YTick = round(linspace(1,size(app.qMats.gcl,1),5));
+            app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
             app.thldLn = xline(app.barPlot,app.qThld,'--r');
             app.ThresholdSlider.Value = round(app.qThld*100);
             app.idxBadCh = app.qMats.gcl<app.qThld;
             app.idxGoodCh = ~app.idxBadCh;
             app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
             app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
-            %app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
-
         end
 
         % Value changed function: ThresholdSlider
@@ -69,15 +69,16 @@ classdef bpGoodQuality < matlab.apps.AppBase
             % saving the quality threshold
             %assignin('caller','qltyThld',app.qThld);
             % saving the indices of good-quality channels     
-            tIncMan = app.idxBadCh;
             SD = app.raw.SD;
+            SD.MeasListAct = [app.idxGoodCh; ones(size(SD.MeasList,1)/2,1)];
             t = app.raw.t;
             d = app.raw.d;            
             s = app.raw.s;            
-            aux = app.raw.aux;                     
+            aux = app.raw.aux;
+            tIncMan = ones(length(t),1);
             save('dotNirs_tIncMan.nirs','SD','t','d','s','aux','tIncMan');
             %Notify to the user if the new file was succesfully created        
-            if exist('dotNirs_tIncMan.nirs','file')
+            if exist('dotNirs_nirsplot.nirs','file')
                 msgbox('Operation Completed','Success');
             else
                 msgbox('Operation Failed','Error');
