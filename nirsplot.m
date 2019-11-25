@@ -516,9 +516,9 @@ end
 
 %-------------------------------------------------------------------------
 function dotNirsOutput = selectGoodChannels(source, events)
-global qMats qltyThld
+global qMats qltyThld raw
 SDMeasListAct = ~qMats.badLinks;
-bpGoodQuality(qMats, qltyThld);
+bpGoodQuality(qMats, qltyThld, raw);
 dotNirsOutput = 0;
 end
 

@@ -54,6 +54,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         function LoadButtonPushed(app, event)
                [FileName,PathName,~] = uigetfile('*.nirs','Please select the .nirs file to import');
             if ~isequal(FileName,0)
+                cd(PathName);
                 app.rawDotNirs = load([PathName FileName],'-mat');
                 app.nirsfileEditField.Value = FileName;
                 

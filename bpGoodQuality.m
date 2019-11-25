@@ -17,6 +17,8 @@ classdef bpGoodQuality < matlab.apps.AppBase
         thldLn % threshold line
         idxBadCh  % Indices of channels below the quality threhold
         idxGoodCh % Indices of channels above the quality threhold
+        raw % content of .fnirs raw file
+%        rawFname % filename of the .fnirs file
     end
     
 
@@ -24,9 +26,11 @@ classdef bpGoodQuality < matlab.apps.AppBase
     methods (Access = private)
 
         % Code that executes after component creation
-        function startupFcn(app, qualityMats, qualityThld)
+        function startupFcn(app, qualityMats, qualityThld, raw)
             app.qMats = qualityMats;
-            app.qThld = qualityThld;            
+            app.qThld = qualityThld;
+            app.raw = raw;
+%            app.rawFname = rawFname;
             app.bp = bar(app.barPlot,fliplr(app.qMats.gcl),'Horizontal','on');
             app.bp.FaceColor = 'flat';
             app.barPlot.Box = 'on';
@@ -63,9 +67,22 @@ classdef bpGoodQuality < matlab.apps.AppBase
         % Button pushed function: SaveButton
         function SaveButtonPushed(app, event)
             % saving the quality threshold
-            assignin('caller','qltyThld',app.qThld);
-            % saving the indices of good-quality channels
-            assignin('caller','SDMeasListAct',app.idxGoodCh)
+            %assignin('caller','qltyThld',app.qThld);
+            % saving the indices of good-quality channels     
+            tIncMan = app.idxBadCh;
+            SD = app.raw.SD;
+            t = app.raw.t;
+            d = app.raw.d;            
+            s = app.raw.s;            
+            aux = app.raw.aux;                     
+            save('dotNirs_tIncMan.nirs','SD','t','d','s','aux','tIncMan');
+            %Notify to the user if the new file was succesfully created        
+            if exist('dotNirs_tIncMan.nirs','file')
+                msgbox('Operation Completed','Success');
+            else
+                msgbox('Operation Failed','Error');
+            end
+  
         end
     end
 
