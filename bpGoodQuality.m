@@ -42,8 +42,8 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.ThresholdSlider.Value = round(app.qThld*100);
             app.idxBadCh = app.qMats.gcl<app.qThld;
             app.idxGoodCh = ~app.idxBadCh;
-            app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
-            app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
+            app.bp.CData(flipud(app.idxBadCh),:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
+            app.bp.CData(flipud(app.idxGoodCh),:) = repmat([0 1 0],sum(app.idxGoodCh),1);
         end
 
         % Value changed function: ThresholdSlider
@@ -60,8 +60,8 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.thldLn.Value = app.qThld;
             app.idxBadCh = app.qMats.gcl<app.qThld;
             app.idxGoodCh = ~app.idxBadCh;
-            app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
-            app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
+           app.bp.CData(flipud(app.idxBadCh),:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
+            app.bp.CData(flipud(app.idxGoodCh),:) = repmat([0 1 0],sum(app.idxGoodCh),1);
         end
 
         % Button pushed function: SaveButton
