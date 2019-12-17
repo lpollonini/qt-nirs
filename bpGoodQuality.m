@@ -76,7 +76,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
             s = app.raw.s;            
             aux = app.raw.aux;
             tIncMan = ones(length(t),1);
-            save('dotNirs_tIncMan.nirs','SD','t','d','s','aux','tIncMan');
+            save('dotNirs_nirsplot.nirs','SD','t','d','s','aux','tIncMan');
             %Notify to the user if the new file was succesfully created        
             if exist('dotNirs_nirsplot.nirs','file')
                 msgbox('Operation Completed','Success');
