@@ -226,7 +226,7 @@ end
 function updateQPlots(qMats)
 % UpdatePlot updates the quality plots with the 'qualityMats' input arg
 % bad channels are ploted according to 'plot_bad' flag
-global myAxes nChannels sclAlpha woiMat 
+global myAxes nChannels sclAlpha woi 
 
 %Unpacking
 sci_array = qMats.sciArray;
@@ -277,8 +277,8 @@ myAxes.inspector.XLabel.FontWeight = 'bold';
 colorbar(myAxes.inspector,'Visible','off');
 
 woiMatrgb = zeros(nChannels,qMats.nWindows,3);
-woiMatrgb(:,:,2) = woiMat;
-alphaMat = woiMat * sclAlpha;
+woiMatrgb(:,:,2) = woi.mat;
+alphaMat = woi.mat * sclAlpha;
 
 hold(myAxes.sci,'on');
 imwoiMat = imagesc(myAxes.sci,woiMatrgb,'AlphaData',alphaMat);
@@ -287,14 +287,14 @@ imwoiMat = imagesc(myAxes.power,woiMatrgb,'AlphaData',alphaMat);
 hold(myAxes.combo,'on');
 imwoiMat = imagesc(myAxes.combo,woiMatrgb,'AlphaData',alphaMat);
 %hold(myAxes.inspector,'on');
-%imwoiMat = imagesc(myAxes.inspector,woiMatrgb,'AlphaData',woiMat);
+%imwoiMat = imagesc(myAxes.inspector,woiMatrgb,'AlphaData',woi.mat);
 
 
 end
 
 %-------------------------------------------------------------------------
 function updateIPlot(iChannel,xLimWindow,iWindow)
-global myAxes nChannels raw qMats woiMat sclAlpha
+global myAxes nChannels raw qMats woi sclAlpha
 % qMats.cardiacData;  % Lambdas x time x channels
 cla(myAxes.inspector);
 plot(myAxes.inspector,raw.t(xLimWindow(1):xLimWindow(2)),...
@@ -318,7 +318,7 @@ if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.nWindows*qMats.sampPerWindow)
     wRect = qMats.nWindows;
     hRect = 1;
     poiMatrgb = zeros(nChannels,xLimWindow(2),3);
-    poiMatrgb(:,:,2) = repmat(repelem(woiMat(1,:),qMats.sampPerWindow),nChannels,1);
+    poiMatrgb(:,:,2) = repmat(repelem(woi.mat(1,:),qMats.sampPerWindow),nChannels,1);
     alphaMat = poiMatrgb(:,:,2) * sclAlpha;   
     
     impoiMat = imagesc(myAxes.inspector,'XData',...
@@ -361,7 +361,7 @@ end
 
 %-------------------------------------------------------------------------
 function [qualityMats] = qualityCompute(raw,fcut,window,overlap,lambda_mask)
-global fs n_windows window_samples woiMat poiMat qltyThld
+global fs n_windows window_samples woi qltyThld
 
 % Set the bandpass filter parameters
 fs = 1/mean(diff(raw.t));
@@ -429,8 +429,8 @@ parfor j = 1:n_windows
 end
 
 % Summary analysis
-[woiMat, poiMat] = getPOI(window_samples,n_windows);
-idxPoi = logical(woiMat(1,:));
+[woi] = getWOI(window_samples,n_windows);
+idxPoi = logical(woi.mat(1,:));
 
 mean_sci_link  = mean(sci_array(:,idxPoi),2);
 std_sci_link  = std(sci_array(:,idxPoi),0,2);
@@ -481,7 +481,7 @@ end
 
 
 %-------------------------------------------------------------------------
-function [woiMat_, poiMat_] = getPOI(window_samples,n_windows)
+function [woi] = getWOI(window_samples,n_windows)
 global raw fs nChannels mergewoiFlag
 % Assuming no overlapping conditions
 
@@ -489,36 +489,60 @@ global raw fs nChannels mergewoiFlag
 % an integer number of windows, module(total_samples,n_windows) = 0
 allowed_samp = window_samples*n_windows; 
 poi = sum(raw.s(1:allowed_samp,:),2);
+poi = poi(1:allowed_samp);
+% Sometimes 's' variable encodes the stimuli durations by including consecutive
+% values of 1. We are interested on the onsets, then we remove consecutive ones.
+idxpoi = find(poi);
+poi = zeros(size(poi));
+poi(idxpoi(diff([0;idxpoi])>1)) = 1;
 nOnsets = length(find(poi));
 idxStim = find(poi);
 interOnsetTimes = raw.t(idxStim(2:end)) - raw.t(idxStim(1:end-1));
 medIntTime = median(interOnsetTimes);
 iqrIntTime = iqr(interOnsetTimes);
+%blckDurTime = (medIntTime/2) + (0.5*iqrIntTime);
 blckDurTime = medIntTime + (0.5*iqrIntTime);
 blckDurSamp = round(fs*blckDurTime);
 blckDurWind = floor(blckDurSamp/window_samples);
-
+woi = struct('mat',zeros(nChannels,n_windows),...
+             'start',zeros(1,nOnsets),...
+             'end',zeros(1,nOnsets));
+woi_array = zeros(1,n_windows);
+% Since we are relying on windows, we do not need the POIs variables instead 
+% we need WOIs variables information
 for i=1:nOnsets
     startPOI = idxStim(i)-blckDurSamp;
     if startPOI < 1
         startPOI = 1;
     end
+    startWOI = floor(startPOI/window_samples);
     
     endPOI = idxStim(i)+blckDurSamp;
     if endPOI > allowed_samp
         endPOI = allowed_samp;
     end
+    endWOI = ceil(endPOI/window_samples);
     poi(startPOI:endPOI) = 1;
+    woi_array(startWOI:endWOI) = 1;
+    woi.start(i) = startWOI;
+    woi.end(i) = endWOI;
 end
-poi = poi(1:allowed_samp)';
-poiMat_ = repmat(poi,nChannels,1);
-woi = zeros(1,n_windows);
-for i=1:n_windows
-    woi(i) = sum(poi( (i-1)*window_samples + 1 : i*window_samples)) >= (window_samples/2);
-end
+
+% See my comment about the preference of WOIs rather than of POIs, if POI
+% information is needed, uncomment next two lines and return POIs variables
+% poi = poi';
+% poiMat_ = repmat(poi,nChannels,1); 
+
 woiblank = 0;
 idxInit = [];
-woitmp = woi;
+%woitmp = woi_array;
+woitmp = woi_array;
+
+% If the gap's duration between two consecutives blocks of interest is less than the
+% block's average duration, then those two consecutives blocks will merge. 
+% This operation has effect visually (one bigger green block instead of 
+% two green blocks with a small gap in between) and for quality results 
+% since the windows inside of such a gap are now considered for quality computation.
 for i =1:n_windows
     if woitmp(i) == 0
         if isempty(idxInit)
@@ -536,9 +560,9 @@ for i =1:n_windows
     end
 end
 if mergewoiFlag == true
-    woi = woitmp;
+    woi_array = woitmp;
 end
-woiMat_ = repmat(woi,nChannels,1);
+woi.mat = repmat(woi_array,nChannels,1);
 end
 
 %-------------------------------------------------------------------------
