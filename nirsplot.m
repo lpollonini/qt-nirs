@@ -35,6 +35,22 @@ else
     raw = rawDotNirs;
 end
 
+% Creating 's' variable (stimuli matrix) from the information in StimDesign
+if ~isfield(raw,'s')
+    if isfield(raw,'StimDesign')
+        nStim = length(raw.StimDesign);
+        sTmp = zeros(size(raw.d,1),nStim);
+        fs = 1/mean(diff(raw.t));
+        for iStim = 1:nStim
+            sTmp(floor(raw.StimDesign(iStim).onset * fs),iStim) = 1;
+        end
+        raw.s = sTmp;
+        clear sTmp;
+    else
+        error('Stimuli information is not available.');
+    end 
+end
+
 lambdas = unique(raw.SD.MeasList(:,4));
 if nargin < 5
     lambda_mask = zeros(length(lambdas),1);
@@ -310,14 +326,15 @@ if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.nWindows*qMats.sampPerWindow)
         'YData',YLimStd,'CData',poiMatrgb,'AlphaData',alphaMat);
    
     %onsets
-    [r,c] = size(raw.s);  
-    clrOnsets = [linspace(0.5,1,c)',...
+    [~,c] = size(raw.s);  
+    colorOnsets = [linspace(0.5,1,c)',...
         linspace(0,0.5,c)',linspace(1,0,c)'];
     for j=1:c
+        %mapping from 0,1 to 0,25%ofPeakToPeak
         yOnset = (raw.s(xLimWindow(1):xLimWindow(2),j)*(YLimStd(2)-YLimStd(1))*0.25)-abs(YLimStd(1));
         plot(myAxes.inspector,raw.t(xLimWindow(1):xLimWindow(2)),...
             yOnset,'LineWidth',2,...
-            'Color',clrOnsets(j,:));
+            'Color',colorOnsets(j,:));
         strLgnds(2+j) = {['Cond ',num2str(j)]};
     end
 
