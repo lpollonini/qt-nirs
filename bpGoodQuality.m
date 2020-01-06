@@ -30,20 +30,24 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.qMats = qualityMats;
             app.qThld = qualityThld;
             app.raw = raw;
-%            app.rawFname = rawFname;
-            app.bp = bar(app.barPlot,flipud(app.qMats.gcl),'Horizontal','on');
+%            app.rawFname = rawFname;            
+            app.bp = bar(app.barPlot,app.qMats.gcl,'Horizontal','on');
+            app.barPlot.YDir = 'reverse';          
             app.bp.FaceColor = 'flat';
             app.barPlot.Box = 'on';
             app.barPlot.YLabel.String  = 'Channel';
             app.barPlot.XLim = [0,1];
             app.barPlot.YTick = round(linspace(1,size(app.qMats.gcl,1),5));
-            app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
+            %app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
             app.thldLn = xline(app.barPlot,app.qThld,'--r');
             app.ThresholdSlider.Value = round(app.qThld*100);
             app.idxBadCh = app.qMats.gcl<app.qThld;
             app.idxGoodCh = ~app.idxBadCh;
-            app.bp.CData(flipud(app.idxBadCh),:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
-            app.bp.CData(flipud(app.idxGoodCh),:) = repmat([0 1 0],sum(app.idxGoodCh),1);
+            app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
+            app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
+            % For future changes:
+            %app.bp.DataTipTemplate.DataTipRows(1).Label = 'Quality';
+            %app.bp.DataTipTemplate.DataTipRows(2).Label = 'Channel';
         end
 
         % Value changed function: ThresholdSlider
@@ -60,8 +64,9 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.thldLn.Value = app.qThld;
             app.idxBadCh = app.qMats.gcl<app.qThld;
             app.idxGoodCh = ~app.idxBadCh;
-           app.bp.CData(flipud(app.idxBadCh),:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
-            app.bp.CData(flipud(app.idxGoodCh),:) = repmat([0 1 0],sum(app.idxGoodCh),1);
+            app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
+            app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
+            
         end
 
         % Button pushed function: SaveButton
