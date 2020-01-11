@@ -37,7 +37,8 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.barPlot.Box = 'on';
             app.barPlot.YLabel.String  = 'Channel';
             app.barPlot.XLim = [0,1];
-            app.barPlot.YTick = round(linspace(1,size(app.qMats.gcl,1),5));
+            %app.barPlot.YTick = round(linspace(1,size(app.qMats.gcl,1),5));
+            app.barPlot.YTick = 1:2:size(app.qMats.gcl,1);
             %app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
             app.thldLn = xline(app.barPlot,app.qThld,'--r');
             app.ThresholdSlider.Value = round(app.qThld*100);

@@ -68,7 +68,8 @@ secDur = raw.t(end);
 % Computation
 [qMats] = qualityCompute(raw,fcut,window,overlap,lambda_mask);
 % Create GUI
-createGUI();
+mainFig = createGUI();
+setappdata(mainFig,'qMats',qMats);
 updateQPlots(qMats);
 
 if save_report_table == true
@@ -78,7 +79,7 @@ end
 end
 
 %-------------------------------------------------------------------------
-function createGUI()
+function mainFig = createGUI()
 global myAxes
 
 % Main figure container
@@ -142,11 +143,11 @@ chSelBtn = uicontrol(mainFig,'Style','pushbutton','String','Channel selection',.
     'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
     pos.chSelBtn,'Callback', @selectGoodChannels);
 
-pos.woiSelBtn = [(pos.chSelBtn(1)+pos.chSelBtn(3))*1.15,...
-    pos.inspectBtn(2),0.15,pos.inspectBtn(4)];
-woiSelBtn = uicontrol(mainFig,'Style','pushbutton','String','WOI selection',...
-    'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
-    pos.woiSelBtn,'Callback', @selectGoodWOI);
+% pos.woiSelBtn = [(pos.chSelBtn(1)+pos.chSelBtn(3))*1.15,...
+%     pos.inspectBtn(2),0.15,pos.inspectBtn(4)];
+% woiSelBtn = uicontrol(mainFig,'Style','pushbutton','String','WOI selection',...
+%     'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
+%     pos.woiSelBtn,'Callback', @selectGoodWOI);
 
 mainFig.Visible = 'on';
 end
@@ -480,7 +481,7 @@ qualityMats.nWindows = n_windows;
 qualityMats.cardiacData = cardiac_data;
 qualityMats.gcl = good_combo_link;
 qualityMats.gcw = good_combo_window; 
-
+%
 end
 
 
@@ -573,7 +574,8 @@ end
 
 %-------------------------------------------------------------------------
 function dotNirsOutput = selectGoodChannels(source, events)
-global qMats qltyThld raw
+global qltyThld raw
+qMats = getappdata(source.Parent,'qMats');
 SDMeasListAct = ~qMats.badLinks;
 bpGoodQuality(qMats, qltyThld, raw);
 dotNirsOutput = 0;
