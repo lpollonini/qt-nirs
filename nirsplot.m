@@ -522,7 +522,7 @@ for i=1:nOnsets
     if startPOI < 1
         startPOI = 1;
     end
-    startWOI = floor(startPOI/window_samples);
+    startWOI = ceil(startPOI/window_samples);
     
     endPOI = idxStim(i)+blckDurSamp;
     if endPOI > allowed_samp
