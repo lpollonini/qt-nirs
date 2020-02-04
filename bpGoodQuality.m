@@ -13,11 +13,14 @@ classdef bpGoodQuality < matlab.apps.AppBase
     properties (Access = private)
         qMats % Quality matrices from NIRSPlot quality computation
         qThld % Threshold for marking good-quality channels
+        good_combo_link % Channels' normalized quality array (#chan x 1)
         bp %boxplot
         thldLn % threshold line
         idxBadCh  % Indices of channels below the quality threhold
         idxGoodCh % Indices of channels above the quality threhold
-        raw % content of .fnirs raw file
+        parentFigure % The parent figure handle
+        nirsplot_param % nirsplot parameters from the parent Figure
+        %raw % content of .fnirs raw file
 %        rawFname % filename of the .fnirs file
     end
     
@@ -26,23 +29,23 @@ classdef bpGoodQuality < matlab.apps.AppBase
     methods (Access = private)
 
         % Code that executes after component creation
-        function startupFcn(app, qualityMats, qualityThld, raw)
-            app.qMats = qualityMats;
-            app.qThld = qualityThld;
-            app.raw = raw;
-%            app.rawFname = rawFname;            
-            app.bp = bar(app.barPlot,app.qMats.gcl,'Horizontal','on');
+        function startupFcn(app, hFigure)
+            app.parentFigure = hFigure;
+            app.nirsplot_param = getappdata(app.parentFigure,'nirsplot_parameters');
+            app.good_combo_link = app.nirsplot_param.quality_matrices.good_combo_link;
+            app.qThld = app.nirsplot_param.quality_threshold;         
+            app.bp = bar(app.barPlot,app.good_combo_link,'Horizontal','on');
             app.barPlot.YDir = 'reverse';          
             app.bp.FaceColor = 'flat';
             app.barPlot.Box = 'on';
             app.barPlot.YLabel.String  = 'Channel';
             app.barPlot.XLim = [0,1];
-            %app.barPlot.YTick = round(linspace(1,size(app.qMats.gcl,1),5));
-            app.barPlot.YTick = 1:2:size(app.qMats.gcl,1);
+            %app.barPlot.YTick = round(linspace(1,size(app.good_combo_link,1),5));
+            app.barPlot.YTick = 1:2:size(app.good_combo_link,1);
             %app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
             app.thldLn = xline(app.barPlot,app.qThld,'--r');
             app.ThresholdSlider.Value = round(app.qThld*100);
-            app.idxBadCh = app.qMats.gcl<app.qThld;
+            app.idxBadCh = app.good_combo_link<app.qThld;
             app.idxGoodCh = ~app.idxBadCh;
             app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
             app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
@@ -51,19 +54,11 @@ classdef bpGoodQuality < matlab.apps.AppBase
             %app.bp.DataTipTemplate.DataTipRows(2).Label = 'Channel';
         end
 
-        % Value changed function: ThresholdSlider
-        function ThresholdSliderValueChanged(app, event)
-%             app.qThld = (app.ThresholdSlider.Value)/100;
-%             b = bar(app.barPlot,app.qMats.gcl,'Horizontal','on');
-%             idxThl = app.qMats.gcl<app.qThld;
-%             b.CData(idxThl,:) = repmat([0.6, 0.6, 0.6],sum(idxThl),1);
-        end
-
         % Value changing function: ThresholdSlider
         function ThresholdSliderValueChanging(app, event)
             app.qThld  = (event.Value)/100;
             app.thldLn.Value = app.qThld;
-            app.idxBadCh = app.qMats.gcl<app.qThld;
+            app.idxBadCh = app.good_combo_link<app.qThld;
             app.idxGoodCh = ~app.idxBadCh;
             app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
             app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
@@ -72,24 +67,10 @@ classdef bpGoodQuality < matlab.apps.AppBase
 
         % Button pushed function: SaveButton
         function SaveButtonPushed(app, event)
-            % saving the quality threshold
-            %assignin('caller','qltyThld',app.qThld);
-            % saving the indices of good-quality channels     
-            SD = app.raw.SD;
-            SD.MeasListAct = [app.idxGoodCh; ones(size(SD.MeasList,1)/2,1)];
-            t = app.raw.t;
-            d = app.raw.d;            
-            s = app.raw.s;            
-            aux = app.raw.aux;
-            tIncMan = ones(length(t),1);
-            save('dotNirs_nirsplot.nirs','SD','t','d','s','aux','tIncMan');
-            %Notify to the user if the new file was succesfully created        
-            if exist('dotNirs_nirsplot.nirs','file')
-                msgbox('Operation Completed','Success');
-            else
-                msgbox('Operation Failed','Error');
-            end
-  
+            app.nirsplot_param.quality_matrices.active_channels = app.idxGoodCh;
+            app.nirsplot_param.quality_threshold = app.qThld;
+            setappdata(app.parentFigure,'nirsplot_parameters',app.nirsplot_param);
+            uiresume(app.parentFigure);  
         end
     end
 
@@ -121,7 +102,6 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.ThresholdSlider = uislider(app.ChannelselectionUIFigure);
             app.ThresholdSlider.MajorTicks = [0 10 20 30 40 50 60 70 80 90 100];
             app.ThresholdSlider.Orientation = 'vertical';
-            app.ThresholdSlider.ValueChangedFcn = createCallbackFcn(app, @ThresholdSliderValueChanged, true);
             app.ThresholdSlider.ValueChangingFcn = createCallbackFcn(app, @ThresholdSliderValueChanging, true);
             app.ThresholdSlider.Position = [44 58 3 303];
 

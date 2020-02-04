@@ -26,6 +26,8 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         PlotButton              matlab.ui.control.Button
         OverlappingLabel        matlab.ui.control.Label
         WindowsoverlapSlider    matlab.ui.control.Slider
+        QualityThresholdLabel   matlab.ui.control.Label
+        QualityThresholdField   matlab.ui.control.NumericEditField
     end
 
     
@@ -44,6 +46,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         windowSec % length in seconds of the window to partition the signal with (defaut: 5)
         windowOverlap % fraction overlap (0..0.99) between adjacent windows (default: 0, no overlap)
         reportTable % Quality output table report
+        quality_threshold % Minimum required quality for channels
     end
     
 
@@ -76,9 +79,11 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.bpFmax = app.FreqMaxEditField.Value;
             app.windowSec = app.LengthsecSpinner.Value;
             app.windowOverlap = (app.WindowsoverlapSlider.Value)/100;
+            app.quality_threshold = app.QualityThresholdField.Value;
+            setappdata(app.NIRSPlotGUIUIFigure,'dotNirs_filename',app.nirsfileEditField.Value);
             
             app.reportTable = nirsplot(app.rawDotNirs, [app.bpFmin, app.bpFmax],...
-                app.windowSec,app.windowOverlap);
+                app.windowSec,app.windowOverlap,app.quality_threshold);
         end
     end
 
@@ -166,7 +171,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
 
             % Create FreqMinEditField
             app.FreqMinEditField = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
-            app.FreqMinEditField.Position = [96 284 50 22];
+            app.FreqMinEditField.Position = [99 284 50 22];
             app.FreqMinEditField.Value = 0.5;
 
             % Create FreqMaxEditFieldLabel
@@ -177,7 +182,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
 
             % Create FreqMaxEditField
             app.FreqMaxEditField = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
-            app.FreqMaxEditField.Position = [99 258 47 22];
+            app.FreqMaxEditField.Position = [99 258 50 22];
             app.FreqMaxEditField.Value = 2.5;
 
             % Create LengthsecSpinnerLabel
@@ -203,19 +208,29 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             % Create PlotButton
             app.PlotButton = uibutton(app.NIRSPlotGUIUIFigure, 'push');
             app.PlotButton.ButtonPushedFcn = createCallbackFcn(app, @PlotButtonPushed2, true);
-            app.PlotButton.Position = [126 60 70 22];
+            app.PlotButton.Position = [126 35 70 22];
             app.PlotButton.Text = 'Plot';
 
             % Create OverlappingLabel
             app.OverlappingLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.OverlappingLabel.Position = [16 128 70 28];
+            app.OverlappingLabel.Position = [16 138 70 28];
             app.OverlappingLabel.Text = {'Overlapping'; '(%)'};
 
             % Create WindowsoverlapSlider
             app.WindowsoverlapSlider = uislider(app.NIRSPlotGUIUIFigure);
             app.WindowsoverlapSlider.MajorTicks = [0 25 50 75 100];
             app.WindowsoverlapSlider.MajorTickLabels = {'0', '25', '50', '75', '100'};
-            app.WindowsoverlapSlider.Position = [102 143 94 3];
+            app.WindowsoverlapSlider.Position = [102 153 94 3];
+            
+            % Create QualityThresholdLabel
+            app.QualityThresholdLabel = uilabel(app.NIRSPlotGUIUIFigure);
+            app.QualityThresholdLabel.HorizontalAlignment = 'left';
+            app.QualityThresholdLabel.Position = [16 85 80 28];
+            app.QualityThresholdLabel.Text = {'Quality'; '(0.1-1.0)'};
+            % Create QualityThresholdField
+            app.QualityThresholdField = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
+            app.QualityThresholdField.Position = [99 85 50 22];
+            app.QualityThresholdField.Value = 0.01;
 
             % Show the figure after all components are created
             app.NIRSPlotGUIUIFigure.Visible = 'on';
