@@ -68,9 +68,12 @@ classdef bpGoodQuality < matlab.apps.AppBase
         % Button pushed function: SaveButton
         function SaveButtonPushed(app, event)
             app.nirsplot_param.quality_matrices.active_channels = app.idxGoodCh;
+            app.qThld = round(app.qThld,2);  
             app.nirsplot_param.quality_threshold = app.qThld;
             setappdata(app.parentFigure,'nirsplot_parameters',app.nirsplot_param);
             uiresume(app.parentFigure);  
+            msgbox(['You are requiring above of ',num2str(app.qThld*100),'% of quality'],'Info');
+            delete(app.ChannelselectionUIFigure);
         end
     end
 
@@ -138,7 +141,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
 
         % Code that executes before app deletion
         function delete(app)
-
+            uiresume(app.parentFigure);  
             % Delete UIFigure when app is deleted
             delete(app.ChannelselectionUIFigure)
         end

@@ -1,4 +1,4 @@
-function report_table = nirsplot(rawDotNirs,fcut_,window_,overlap_,q_threshold,lambda_mask_)
+function report_table = nirsplot(rawDotNirs,fcut_,window_,overlap_,q_threshold,cond_mask,lambda_mask_)
 % raw: raw data in Homer format. Ex: raw = load('nirx_sample.nirs','-mat')
 % fcut: 1x2 array [fmin fmax] representing the bandpass of the cardiac pulsation (default [0.5 2.5])
 % window: length in seconds of the window to partition the signal with (defaut: 5)
@@ -11,6 +11,7 @@ close all
 %global qMats qltyThld mergewoiFlag SDMeasListAct
 
 report_table = [];
+
 if nargin<5
     q_threshold = 0.75;
 end
@@ -49,12 +50,15 @@ if ~isfield(rawDotNirs,'s')
 end
 
 lambdas_ = unique(rawDotNirs.SD.MeasList(:,4));
-if nargin < 6
+if nargin < 7
     lambda_mask_ = zeros(length(lambdas_),1);
     lambda_mask_(1)=1;
     lambda_mask_(2)=1;
 end
 
+if nargin<6
+  cond_mask = ones(1,size(rawDotNirs.s,2));
+end
 
 % Create GUI
 [main_fig_axes,main_fig] = createGUI();
@@ -72,6 +76,7 @@ nirsplot_parameters.s = rawDotNirs.s;
 nirsplot_parameters.t = rawDotNirs.t;
 nirsplot_parameters.fs = frequency_samp;
 nirsplot_parameters.mergewoiFlag = true;
+nirsplot_parameters.cond_mask = cond_mask;
 nirsplot_parameters.save_report_table = false;
 nirsplot_parameters.sclAlpha = 0.2;
 nirsplot_parameters.main_fig_axes = main_fig_axes;
@@ -338,6 +343,7 @@ end
         qMats = nirsplot_param.quality_matrices;
         myAxes = nirsplot_param.main_fig_axes;
         n_channels = nirsplot_param.n_channels;
+        conditions_mask = nirsplot_param.cond_mask;
         woi = nirsplot_param.quality_matrices.woi;
         
         sclAlpha = 0.2;
@@ -375,16 +381,17 @@ end
                 'YData',YLimStd,'CData',poiMatrgb,'AlphaData',alphaMat);
             
             %onsets
-            [~,c] = size(s);
+            c = sum(conditions_mask);
+            COI = find(conditions_mask);
             colorOnsets = [linspace(0.5,1,c)',...
                 linspace(0,0.5,c)',linspace(1,0,c)'];
             for j=1:c
                 %mapping from 0,1 to 0,25%ofPeakToPeak
-                yOnset = (s(xLimWindow(1):xLimWindow(2),j)*(YLimStd(2)-YLimStd(1))*0.25)-abs(YLimStd(1));
+                yOnset = (s(xLimWindow(1):xLimWindow(2),COI(j))*(YLimStd(2)-YLimStd(1))*0.25)-abs(YLimStd(1));
                 plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
                     yOnset,'LineWidth',2,...
                     'Color',colorOnsets(j,:));
-                strLgnds(2+j) = {['Cond ',num2str(j)]};
+                strLgnds(2+j) = {['Cond ',num2str(COI(j))]};
             end
             
         else
@@ -471,7 +478,7 @@ end
             interval = (j-1)*window_samples-(j-1)*(overlap_samples)+1 : j*window_samples-(j-1)*(overlap_samples);
             cardiac_windows(:,:,:,j) = cardiac_data(:,interval,:);
         end
-        for j = 1:n_windows
+        parfor j = 1:n_windows
             cardiac_window = cardiac_windows(:,:,:,j);
             sci_array_channels = zeros(1,size(cardiac_window,3));
             power_array_channels = zeros(1,size(cardiac_window,3));
@@ -579,9 +586,10 @@ end
         t = nirsplot_parameters.t;
         mergewoi_flag = nirsplot_parameters.mergewoi_flag;
         n_channels = nirsplot_parameters.n_channels;
-        
+        conditions_mask = logical(nirsplot_parameters.cond_mask);        
+
         allowed_samp = window_samples*n_windows;
-        poi = sum(s(1:allowed_samp,:),2);
+        poi = sum(s(1:allowed_samp,conditions_mask),2);
         poi = poi(1:allowed_samp);
         % Sometimes 's' variable encodes the stimuli durations by including consecutive
         % values of 1. We are interested on the onsets, then we remove consecutive ones.
@@ -696,7 +704,7 @@ end
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
          raw = getappdata(source.Parent,'rawDotNirs');
         active_channels = nirsplot_param.quality_matrices.active_channels;
-% saving the indices of good-quality channels     
+        % saving the indices of good-quality channels     
             SD = raw.SD;
             SD.MeasListAct = [active_channels; ones(size(SD.MeasList,1)/2,1)];
             t = raw.t;
