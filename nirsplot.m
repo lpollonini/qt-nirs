@@ -175,6 +175,15 @@ end
             'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
             pos.SaveBtn,'Callback', @save2dotnirs);
         
+        pos.AdvView = [myAxDim.width,...
+            pos.inspectBtn(2)-0.05,...
+            0.1,...
+            pos.inspectBtn(4)];        
+        viewMCheckB = uicontrol(main_fig,'Style','checkbox','String','Advanced view',...
+            'FontSize',10,'FontWeight','bold','Units','normalized','Position',...
+            pos.AdvView,'Callback', @viewMode,'Tag','viewMCheckB');
+        
+        
         %main_fig.Visible = 'on';
         
     end
@@ -269,48 +278,61 @@ end
         qMats = nirsplot_param.quality_matrices;
         myAxes = nirsplot_param.main_fig_axes;
         n_channels = nirsplot_param.n_channels;
-        nirsplot_param = getappdata(main_fig,'nirsplot_parameters');
         woi = nirsplot_param.quality_matrices.woi;
+        viewMCheckB = findobj('Tag','viewMCheckB');
         
         %Unpacking
         sci_array = qMats.sci_array;
         power_array = qMats.power_array;
         combo_array = qMats.combo_array;
+        combo_array_expanded = qMats.combo_array_expanded;
         
         sclAlpha = 0.2;
         
-        % Scalp Contact Index
-        imSci = imagesc(myAxes.sci,sci_array);
-        myAxes.sci.CLim = [0,1];
-        myAxes.sci.YLim =[1, n_channels];
-        %myAxes.sci.XLim =[1, size(sci_array,2)];
-        % myAxes.sci.XTick = round(linspace(1,qMats.n_windows,8));
-        % myAxes.sci.XTickLabel = num2mstr(round(linspace(1,qMats.n_windows*qMats.sampPerWindow,8)));
-        colormap(myAxes.sci,"gray");
-        colorbar(myAxes.sci,"eastoutside","Ticks",[0 0.8 1]);
-        myAxes.sci.YLabel.String = 'Channel #';
-        myAxes.sci.YLabel.FontWeight = 'bold';
+        viewMode(viewMCheckB,[]);
+%         % Scalp Contact Index
+%         imSci = imagesc(myAxes.sci,sci_array);
+%         myAxes.sci.CLim = [0,1];
+%         myAxes.sci.YLim =[1, n_channels];
+%         %myAxes.sci.XLim =[1, size(sci_array,2)];
+%         % myAxes.sci.XTick = round(linspace(1,qMats.n_windows,8));
+%         % myAxes.sci.XTickLabel = num2mstr(round(linspace(1,qMats.n_windows*qMats.sampPerWindow,8)));
+%         colormap(myAxes.sci,"gray");
+%         colorbar(myAxes.sci,"eastoutside","Ticks",[0 0.8 1]);
+%         myAxes.sci.YLabel.String = 'Channel #';
+%         myAxes.sci.YLabel.FontWeight = 'bold';
         
-        % Power peak
-        imPower = imagesc(myAxes.power,power_array);
-        myAxes.power.CLim = [0, 0.12];
-        myAxes.power.YLim =[1, n_channels];
-        %myAxes.power.XLim =[1, size(power_array,2)];
-        colormap(myAxes.power,"gray");
-        colorbar(myAxes.power,"eastoutside","Ticks",[0 0.1 0.12]);
-        %        h.TickLabels ={'0','0.10*','0.12'};
-        myAxes.power.YLabel.String = 'Channel #';
-        myAxes.power.YLabel.FontWeight = 'bold';
+%         % Power peak
+%         imPower = imagesc(myAxes.power,power_array);
+%         myAxes.power.CLim = [0, 0.12];
+%         myAxes.power.YLim =[1, n_channels];
+%         %myAxes.power.XLim =[1, size(power_array,2)];
+%         colormap(myAxes.power,"gray");
+%         colorbar(myAxes.power,"eastoutside","Ticks",[0 0.1 0.12]);
+%         %        h.TickLabels ={'0','0.10*','0.12'};
+%         myAxes.power.YLabel.String = 'Channel #';
+%         myAxes.power.YLabel.FontWeight = 'bold';
         
-        % Combo quality
-        imCombo = imagesc(myAxes.combo,combo_array);
-        myAxes.combo.CLim = [0, 1];
-        myAxes.combo.YLim =[1, n_channels];
-        %myAxes.combo.XLim =[1, size(combo_array,2)];
-        colormap(myAxes.combo,[0 0 0;1 1 1]);
-        colorbar(myAxes.combo,"eastoutside","Ticks",[0 1]);
-        myAxes.combo.YLabel.String = 'Channel #';
-        myAxes.combo.YLabel.FontWeight = 'bold';
+%         % Combo quality
+%         imCombo = imagesc(myAxes.combo,combo_array_expanded);
+%         myAxes.combo.CLim = [0, 3];
+%         myAxes.combo.YLim =[1, n_channels];
+%         %myAxes.combo.XLim =[1, size(combo_array,2)];
+%         %colormap(myAxes.combo,[0 0 0;1 1 1]);
+%         % SCI,Power   combo_array_expanded    QualityColor
+%         %  0,0              0                   [0 0    0]
+%         %  0,1              1                   [1 0    0]
+%         %  2,0              2                   [1 0.64 0]
+%         %  2,1              3                   [0 1    0]
+%         colormap(myAxes.combo,[0 0 0; 1 0 0; 1 0.64 0; 0 1 0]);
+%         colorbar(myAxes.combo,"eastoutside","Ticks",[0 1 2 3],...
+%             'TickLabels',...
+%             {[char(hex2dec('2717')),'SCI  ', char(hex2dec('2717')),'Power'],...
+%              [char(hex2dec('2717')),'SCI  ', char(hex2dec('2713')),'Power'],...
+%              [char(hex2dec('2713')),'SCI  ', char(hex2dec('2717')),'Power'],...
+%              [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
+%         myAxes.combo.YLabel.String = 'Channel #';
+%         myAxes.combo.YLabel.FontWeight = 'bold';
         
         % For visual consistency among axes
         myAxes.inspector.YLimMode = 'manual';
@@ -523,6 +545,8 @@ end
         good_power_window = sum(power_array(:,idxPoi)>0.1,1)/size(power_array(:,idxPoi),1);
         
         combo_array = (sci_array >= 0.8) & (power_array >= 0.10);
+        combo_array_expanded = 2*(sci_array >= 0.8) + (power_array >= 0.10);
+        
         mean_combo_link  = mean(combo_array,2);
         std_combo_link  = std(combo_array,0,2);
 
@@ -559,6 +583,7 @@ end
         qualityMats.sci_array    = sci_array;
         qualityMats.power_array  = power_array;
         qualityMats.combo_array  = combo_array;
+        qualityMats.combo_array_expanded = combo_array_expanded;
         qualityMats.bad_links    = bad_links;
         qualityMats.bad_windows  = bad_windows;
         qualityMats.sampPerWindow = window_samples;
@@ -722,4 +747,100 @@ end
             end
 
     end
+
+
+    function viewMode(source,event)
+        nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
+        qMats = nirsplot_param.quality_matrices;
+        myAxes = nirsplot_param.main_fig_axes;
+        n_channels = nirsplot_param.n_channels;
+        
+        sci_array = qMats.sci_array;
+        power_array = qMats.power_array;
+        combo_array = qMats.combo_array;
+        combo_array_expanded = qMats.combo_array_expanded;
+      
+        checked = source.Value;
+        
+        if checked
+            % Scalp Contact Index
+            imagesc(myAxes.sci,sci_array);
+            myAxes.sci.CLim = [0,1];
+            myAxes.sci.YLim =[1, n_channels];
+            %myAxes.sci.XLim =[1, size(sci_array,2)];
+            % myAxes.sci.XTick = round(linspace(1,qMats.n_windows,8));
+            % myAxes.sci.XTickLabel = num2mstr(round(linspace(1,qMats.n_windows*qMats.sampPerWindow,8)));
+            colormap(myAxes.sci,"hot");
+            colorbar(myAxes.sci,"eastoutside","Ticks",[0 0.8 1]);
+            myAxes.sci.YLabel.String = 'Channel #';
+            myAxes.sci.YLabel.FontWeight = 'bold';
+
+            % Power peak
+            imPower = imagesc(myAxes.power,power_array);
+            myAxes.power.CLim = [0, 0.12];
+            myAxes.power.YLim =[1, n_channels];
+            %myAxes.power.XLim =[1, size(power_array,2)];
+            colormap(myAxes.power,"hot");
+            colorbar(myAxes.power,"eastoutside","Ticks",[0 0.1 0.12]);
+            %        h.TickLabels ={'0','0.10*','0.12'};
+            myAxes.power.YLabel.String = 'Channel #';
+            myAxes.power.YLabel.FontWeight = 'bold';
+            
+            
+            % Combo quality
+            imagesc(myAxes.combo,combo_array_expanded);
+            myAxes.combo.CLim = [0, 3];
+            myAxes.combo.YLim =[1, n_channels];
+            %myAxes.combo.XLim =[1, size(combo_array,2)];
+            %colormap(myAxes.combo,[0 0 0;1 1 1]);
+            % SCI,Power   combo_array_expanded    QualityColor
+            %  0,0              0                   [0 0    0]
+            %  0,1              1                   [1 0    0]
+            %  2,0              2                   [1 0.64 0]
+            %  2,1              3                   [0 1    0]
+            colormap(myAxes.combo,[0 0 0; 1 0 0; 1 0.64 0; 0 1 0]);
+            colorbar(myAxes.combo,"eastoutside","Ticks",[0 1 2 3],...
+                'TickLabels',...
+                {[char(hex2dec('2717')),'SCI  ', char(hex2dec('2717')),'Power'],...
+                 [char(hex2dec('2717')),'SCI  ', char(hex2dec('2713')),'Power'],...
+                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2717')),'Power'],...
+                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
+            myAxes.combo.YLabel.String = 'Channel #';
+            myAxes.combo.YLabel.FontWeight = 'bold';
+        else
+            % Scalp Contact Index
+            imagesc(myAxes.sci,sci_array);
+            myAxes.sci.CLim = [0,1];
+            myAxes.sci.YLim =[1, n_channels];
+            %myAxes.sci.XLim =[1, size(sci_array,2)];
+            % myAxes.sci.XTick = round(linspace(1,qMats.n_windows,8));
+            % myAxes.sci.XTickLabel = num2mstr(round(linspace(1,qMats.n_windows*qMats.sampPerWindow,8)));
+            colormap(myAxes.sci,"gray");
+            colorbar(myAxes.sci,"eastoutside","Ticks",[0 0.8 1]);
+            myAxes.sci.YLabel.String = 'Channel #';
+            myAxes.sci.YLabel.FontWeight = 'bold';
+
+            % Power peak
+            imagesc(myAxes.power,power_array);
+            myAxes.power.CLim = [0, 0.12];
+            myAxes.power.YLim =[1, n_channels];
+            %myAxes.power.XLim =[1, size(power_array,2)];
+            colormap(myAxes.power,"gray");
+            colorbar(myAxes.power,"eastoutside","Ticks",[0 0.1 0.12]);
+            %        h.TickLabels ={'0','0.10*','0.12'};
+            myAxes.power.YLabel.String = 'Channel #';
+            myAxes.power.YLabel.FontWeight = 'bold';
+
+            % Combo quality
+            imagesc(myAxes.combo,combo_array);
+            myAxes.combo.CLim = [0, 1];
+            myAxes.combo.YLim =[1, n_channels];
+            %myAxes.combo.XLim =[1, size(combo_array,2)];
+            colormap(myAxes.combo,[0 0 0;1 1 1]);
+            colorbar(myAxes.combo,"eastoutside","Ticks",[0 1]);
+            myAxes.combo.YLabel.String = 'Channel #';
+            myAxes.combo.YLabel.FontWeight = 'bold';
+        end
+    end
+    
 end %end of nirsplot function definition
