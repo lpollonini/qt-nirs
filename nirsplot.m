@@ -183,7 +183,8 @@ end
             'FontSize',10,'FontWeight','bold','Units','normalized','Position',...
             pos.AdvView,'Callback', @viewMode,'Tag','viewMCheckB');
         
-        
+        debFig=figure(3);
+        main_fig_axes.debAx =  axes(debFig);
         %main_fig.Visible = 'on';
         
     end
@@ -367,21 +368,32 @@ end
         n_channels = nirsplot_param.n_channels;
         conditions_mask = nirsplot_param.cond_mask;
         woi = nirsplot_param.quality_matrices.woi;
+        fs = nirsplot_param.fs;
         
         sclAlpha = 0.2;
-        % qMats.cardiac_data;  % #Lambda x time x #channels
-        cla(myAxes.inspector);
-        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
-            qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),'-b');
-        hold(myAxes.inspector,'on');
-        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
-            qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),'-r');
         myAxes.inspector.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];
-        %YLimStd = [min(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all'),...
-        %    max(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all')]*1.05;
-        YLimStd = [min(qMats.cardiac_data(:,:,iChannel),[],'all'),...
-            max(qMats.cardiac_data(:,:,iChannel),[],'all')]*1.05;
+%        YLimStd = [min(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all'),...
+%            max(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all')]*1.05;
+%        YLimStd = [min(qMats.cardiac_data(:,:,iChannel),[],'all'),...
+%            max(qMats.cardiac_data(:,:,iChannel),[],'all')]*1.05;        
+        YLimStd = [min(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all'),...
+            max(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all')]*1.05;
         XLimStd = myAxes.inspector.XLim;
+        
+        % qMats.cardiac_data;  % #Lambda x time x #channels
+        wl1Norm = (qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel)-YLimStd(1))./ (YLimStd(2)-YLimStd(1));
+        wl2Norm = (qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel)-YLimStd(1))./ (YLimStd(2)-YLimStd(1));
+        YLimStd = [0,1.05];
+        cla(myAxes.inspector);
+%        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
+%            qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),,'-b');
+        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...            
+            wl1Norm,'-b');
+        hold(myAxes.inspector,'on');
+%        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
+%            qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),'-r');
+        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...            
+            wl2Norm,'-r');
         
         %yLab = myAxes.inspector.YLim(1)+((myAxes.inspector.YLim(2)-myAxes.inspector.YLim(1))*0.71);
         %xLab = myAxes.inspector.XLim(1)+((myAxes.inspector.XLim(2)-myAxes.inspector.XLim(1))*0.93);
@@ -439,6 +451,9 @@ end
                 'Color','red','FontSize',10,'FontWeight','bold','BackgroundColor','#FFFF00',...
                 'Margin',1,'Clipping','on',...
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
+            %graphical debug
+            graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
+                qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs);
         end
         myAxes.inspector.YLim = YLimStd;
         myAxes.inspector.XLim = XLimStd;
@@ -500,17 +515,19 @@ end
             interval = (j-1)*window_samples-(j-1)*(overlap_samples)+1 : j*window_samples-(j-1)*(overlap_samples);
             cardiac_windows(:,:,:,j) = cardiac_data(:,interval,:);
         end
-        parfor j = 1:n_windows
+        for j = 1:n_windows
             cardiac_window = cardiac_windows(:,:,:,j);
             sci_array_channels = zeros(1,size(cardiac_window,3));
             power_array_channels = zeros(1,size(cardiac_window,3));
             fpower_array_channels = zeros(1,size(cardiac_window,3));
-            for k = 1:size(cardiac_window,3)
+            for k = 1:size(cardiac_window,3) % Channels iteration
                 %cross-correlate the two wavelength signals - both should have cardiac pulsations
                 similarity = xcorr(squeeze(cardiac_window(1,:,k)),squeeze(cardiac_window(2,:,k)),'unbiased');
                 if any(abs(similarity)>eps)
                     % this makes the SCI=1 at lag zero when x1=x2 AND makes the power estimate independent of signal length, amplitude and Fs
                     similarity = length(squeeze(cardiac_window(1,:,k)))*similarity./sqrt(sum(abs(squeeze(cardiac_window(1,:,k))).^2)*sum(abs(squeeze(cardiac_window(2,:,k))).^2));
+                else
+                    warning('Similarity results close to zero');
                 end
                 [pxx,f] = periodogram(similarity,hamming(length(similarity)),length(similarity),fs,'power');
                 [pwrest,idx] = max(pxx(f<fcut_max)); % FIX Make it age-dependent
@@ -841,6 +858,24 @@ end
             myAxes.combo.YLabel.String = 'Channel #';
             myAxes.combo.YLabel.FontWeight = 'bold';
         end
+    end
+
+    function graphicDebug(window1,window2,fs)
+        %cross-correlate the two wavelength signals - both should have cardiac pulsations
+        similarity = xcorr(window1,window2,'unbiased');
+        if any(abs(similarity)>eps)
+            % this makes the SCI=1 at lag zero when x1=x2 AND makes the power estimate independent of signal length, amplitude and Fs
+            similarity = length(window1)*similarity./sqrt(sum(abs(window1).^2)*sum(abs(window2).^2));
+        else
+            warning('Similarity results close to zero');
+        end
+        [pxx,f] = periodogram(similarity,hamming(length(similarity)),length(similarity),fs,'power');
+        f3=figure(3);
+        clf(f3);
+        subplot(2,1,1);
+        plot(f3.Children(1),similarity);
+        subplot(2,1,2);
+        plot(f3.Children(1),pxx);
     end
     
 end %end of nirsplot function definition
