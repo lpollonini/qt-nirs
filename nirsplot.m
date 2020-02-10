@@ -78,7 +78,7 @@ nirsplot_parameters.fs = frequency_samp;
 nirsplot_parameters.mergewoiFlag = true;
 nirsplot_parameters.cond_mask = cond_mask;
 nirsplot_parameters.save_report_table = false;
-nirsplot_parameters.sclAlpha = 0.2;
+nirsplot_parameters.sclAlpha = 0.15;
 nirsplot_parameters.main_fig_axes = main_fig_axes;
 setappdata(main_fig,'nirsplot_parameters',nirsplot_parameters);
 setappdata(main_fig,'rawDotNirs',rawDotNirs);
@@ -90,8 +90,8 @@ nirsplot_parameters.quality_matrices = quality_matrices;
 setappdata(main_fig,'nirsplot_parameters',nirsplot_parameters);
 
 main_fig.Visible = 'on';
-
-updateQPlots(main_fig);
+detViewCheckb = findobj('Tag','detViewCheckb');
+updateQPlots(detViewCheckb,[]);
 
 if nirsplot_parameters.save_report_table == true
     report_table = saveQuality(quality_matrices);
@@ -179,12 +179,10 @@ end
             pos.inspectBtn(2)-0.05,...
             0.1,...
             pos.inspectBtn(4)];        
-        viewMCheckB = uicontrol(main_fig,'Style','checkbox','String','Advanced view',...
+        uicontrol(main_fig,'Style','checkbox','String','Detailed view',...
             'FontSize',10,'FontWeight','bold','Units','normalized','Position',...
-            pos.AdvView,'Callback', @viewMode,'Tag','viewMCheckB');
+            pos.AdvView,'Callback', @updateQPlots,'Tag','detViewCheckb');
         
-        debFig=figure(3);
-        main_fig_axes.debAx =  axes(debFig);
         %main_fig.Visible = 'on';
         
     end
@@ -272,69 +270,122 @@ end
     end
 
 %% -------------------------------------------------------------------------
-    function updateQPlots(main_fig)
+    function updateQPlots(source,event)
         % UpdatePlot updates the quality plots with the 'qualityMats' input arg
         % bad channels are ploted according to 'plot_bad' flag
-        nirsplot_param = getappdata(main_fig,'nirsplot_parameters');
+        nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
         qMats = nirsplot_param.quality_matrices;
         myAxes = nirsplot_param.main_fig_axes;
         n_channels = nirsplot_param.n_channels;
         woi = nirsplot_param.quality_matrices.woi;
-        viewMCheckB = findobj('Tag','viewMCheckB');
+        sclAlpha = nirsplot_param.sclAlpha;
         
         %Unpacking
         sci_array = qMats.sci_array;
         power_array = qMats.power_array;
         combo_array = qMats.combo_array;
         combo_array_expanded = qMats.combo_array_expanded;
+
+        woiMatrgb = zeros(n_channels,qMats.n_windows,3);
+        woiMatrgb(:,:,2) = woi.mat;
+        alphaMat = woi.mat * sclAlpha;
         
-        sclAlpha = 0.2;
-        
-        viewMode(viewMCheckB,[]);
-%         % Scalp Contact Index
-%         imSci = imagesc(myAxes.sci,sci_array);
-%         myAxes.sci.CLim = [0,1];
-%         myAxes.sci.YLim =[1, n_channels];
-%         %myAxes.sci.XLim =[1, size(sci_array,2)];
-%         % myAxes.sci.XTick = round(linspace(1,qMats.n_windows,8));
-%         % myAxes.sci.XTickLabel = num2mstr(round(linspace(1,qMats.n_windows*qMats.sampPerWindow,8)));
-%         colormap(myAxes.sci,"gray");
-%         colorbar(myAxes.sci,"eastoutside","Ticks",[0 0.8 1]);
-%         myAxes.sci.YLabel.String = 'Channel #';
-%         myAxes.sci.YLabel.FontWeight = 'bold';
-        
-%         % Power peak
-%         imPower = imagesc(myAxes.power,power_array);
-%         myAxes.power.CLim = [0, 0.12];
-%         myAxes.power.YLim =[1, n_channels];
-%         %myAxes.power.XLim =[1, size(power_array,2)];
-%         colormap(myAxes.power,"gray");
-%         colorbar(myAxes.power,"eastoutside","Ticks",[0 0.1 0.12]);
-%         %        h.TickLabels ={'0','0.10*','0.12'};
-%         myAxes.power.YLabel.String = 'Channel #';
-%         myAxes.power.YLabel.FontWeight = 'bold';
-        
-%         % Combo quality
-%         imCombo = imagesc(myAxes.combo,combo_array_expanded);
-%         myAxes.combo.CLim = [0, 3];
-%         myAxes.combo.YLim =[1, n_channels];
-%         %myAxes.combo.XLim =[1, size(combo_array,2)];
-%         %colormap(myAxes.combo,[0 0 0;1 1 1]);
-%         % SCI,Power   combo_array_expanded    QualityColor
-%         %  0,0              0                   [0 0    0]
-%         %  0,1              1                   [1 0    0]
-%         %  2,0              2                   [1 0.64 0]
-%         %  2,1              3                   [0 1    0]
-%         colormap(myAxes.combo,[0 0 0; 1 0 0; 1 0.64 0; 0 1 0]);
-%         colorbar(myAxes.combo,"eastoutside","Ticks",[0 1 2 3],...
-%             'TickLabels',...
-%             {[char(hex2dec('2717')),'SCI  ', char(hex2dec('2717')),'Power'],...
-%              [char(hex2dec('2717')),'SCI  ', char(hex2dec('2713')),'Power'],...
-%              [char(hex2dec('2713')),'SCI  ', char(hex2dec('2717')),'Power'],...
-%              [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
-%         myAxes.combo.YLabel.String = 'Channel #';
-%         myAxes.combo.YLabel.FontWeight = 'bold';
-        
+        detailView = source.Value;
+        mygray = [0 0 0; 0.7 0.7 0.7; 1 1 1];
+        if detailView            
+            % Scalp Contact Index
+            imagesc(myAxes.sci,sci_array);
+            a = 0.6;
+            b = 0.8;
+            myAxes.sci.CLim = [a, b];
+            myAxes.sci.YLim =[1, n_channels];
+            colormap(myAxes.sci,mygray);
+            colorbar(myAxes.sci,"eastoutside","Ticks",[(a+0.025) (a+b)*0.5 (b-0.025)],...
+                'TickLabels',{'Bad','Dubious','Good'},'Limits',[a-0.0125 b+0.0125]);
+            myAxes.sci.YLabel.String = 'Channel #';
+            myAxes.sci.YLabel.FontWeight = 'bold';
+            
+            % Power peak
+            imagesc(myAxes.power,power_array);
+            a = 0.06;
+            b = 0.1;
+            myAxes.power.CLim = [a, b];
+            myAxes.power.YLim =[1, n_channels];
+            colormap(myAxes.power,mygray);
+            colorbar(myAxes.power,"eastoutside","Ticks",[(a+0.005) (a+b)*0.5 (b-0.005)],...
+                'TickLabels',{'Bad','Dubious','Good'},'Limits',[a-0.0025 b+0.0025]);
+            myAxes.power.YLabel.String = 'Channel #';
+            myAxes.power.YLabel.FontWeight = 'bold';
+            
+            % Combo quality
+            imagesc(myAxes.combo,combo_array_expanded);
+            myAxes.combo.CLim = [1, 3];
+            myAxes.combo.YLim =[1, n_channels];
+            %myAxes.combo.XLim =[1, size(combo_array,2)];
+            %colormap(myAxes.combo,[0 0 0;1 1 1]);
+            % SCI,Power   combo_array_expanded    QualityColor
+            %  0,0              0                   [0 0    0]
+            %  0,1              1                   [0 0    0]
+            %  2,0              2                   [0.7 0.7 0.7]
+            %  2,1              3                   [0 1    0]
+            qualityColor = [0 0 0; 0 0 0; 0.6 0.6 0.6; 1 1 1];
+            colormap(myAxes.combo,qualityColor);
+            colorbar(myAxes.combo,"eastoutside","Ticks",[1.3 1.5 2.25 2.75],...
+                'TickLabels',...
+                {[char(hex2dec('2717')),'SCI  ', char(hex2dec('2717')),'Power'],...
+                [char(hex2dec('2717')),'SCI  ', char(hex2dec('2713')),'Power'],...
+                [char(hex2dec('2713')),'SCI  ', char(hex2dec('2717')),'Power'],...
+                [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
+            myAxes.combo.YLabel.String = 'Channel #';
+            myAxes.combo.YLabel.FontWeight = 'bold';
+            
+            % Drawing green bands
+            hold(myAxes.combo,'on');
+            imagesc(myAxes.combo,woiMatrgb,'AlphaData',alphaMat);
+        else            
+            % Scalp Contact Index
+            sci_threshold = 0.8;
+            sci_mask = sci_array>=sci_threshold;
+            imagesc(myAxes.sci,sci_mask);
+            myAxes.sci.CLim = [0,1];
+            myAxes.sci.YLim =[1, n_channels];
+            colormap(myAxes.sci,gray(2));
+            colorbar(myAxes.sci,"eastoutside","Ticks",[0.25 0.75],...
+                'Limits',[0,1],'TickLabels',{'Bad','Good'});
+            myAxes.sci.YLabel.String = 'Channel #';
+            myAxes.sci.YLabel.FontWeight = 'bold';
+            
+            % Power peak
+            power_threshold = 0.1;
+            power_mask = power_array>=power_threshold;
+            imagesc(myAxes.power,power_mask);
+            myAxes.power.CLim = [0, 1];
+            myAxes.power.YLim =[1, n_channels];
+            colormap(myAxes.power,gray(2));
+            colorbar(myAxes.power,"eastoutside","Ticks",[0.25 0.75],...
+                'Limits',[0,1],'TickLabels',{'Bad','Good'});
+            myAxes.power.YLabel.String = 'Channel #';
+            myAxes.power.YLabel.FontWeight = 'bold';
+            
+            % Combo quality
+            imagesc(myAxes.combo,combo_array);
+            myAxes.combo.CLim = [0, 1];
+            myAxes.combo.YLim =[1, n_channels];
+            colormap(myAxes.combo,[0 0 0;1 1 1]);
+            colorbar(myAxes.combo,"eastoutside","Ticks",[0.25 0.75],...
+                'Limits',[0,1],'TickLabels',{'Bad','Good'});
+            myAxes.combo.YLabel.String = 'Channel #';
+            myAxes.combo.YLabel.FontWeight = 'bold';
+            
+            % Drawing green bands
+            hold(myAxes.sci,'on');
+            imagesc(myAxes.sci,woiMatrgb,'AlphaData',alphaMat);
+            hold(myAxes.power,'on');
+            imagesc(myAxes.power,woiMatrgb,'AlphaData',alphaMat);
+            hold(myAxes.combo,'on');
+            imagesc(myAxes.combo,woiMatrgb,'AlphaData',alphaMat);
+        end
+
         % For visual consistency among axes
         myAxes.inspector.YLimMode = 'manual';
         myAxes.inspector.YLabel.String = 'Channel #';
@@ -342,20 +393,6 @@ end
         myAxes.inspector.YLabel.FontWeight = 'bold';
         myAxes.inspector.XLabel.FontWeight = 'bold';
         colorbar(myAxes.inspector,'Visible','off');
-        
-        woiMatrgb = zeros(n_channels,qMats.n_windows,3);
-        woiMatrgb(:,:,2) = woi.mat;
-        alphaMat = woi.mat * sclAlpha;
-        
-        hold(myAxes.sci,'on');
-        imwoiMat = imagesc(myAxes.sci,woiMatrgb,'AlphaData',alphaMat);
-        hold(myAxes.power,'on');
-        imwoiMat = imagesc(myAxes.power,woiMatrgb,'AlphaData',alphaMat);
-        hold(myAxes.combo,'on');
-        imwoiMat = imagesc(myAxes.combo,woiMatrgb,'AlphaData',alphaMat);
-        %hold(myAxes.inspector,'on');
-        %imwoiMat = imagesc(myAxes.inspector,woiMatrgb,'AlphaData',woi.mat);
-        
         
     end
 
@@ -369,37 +406,31 @@ end
         conditions_mask = nirsplot_param.cond_mask;
         woi = nirsplot_param.quality_matrices.woi;
         fs = nirsplot_param.fs;
+        sclAlpha = nirsplot_param.sclAlpha;
+        dViewCheckb = findobj('Tag','detViewCheckb');
         
-        sclAlpha = 0.2;
-        myAxes.inspector.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];
-%        YLimStd = [min(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all'),...
-%            max(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all')]*1.05;
-%        YLimStd = [min(qMats.cardiac_data(:,:,iChannel),[],'all'),...
-%            max(qMats.cardiac_data(:,:,iChannel),[],'all')]*1.05;        
+        myAxes.inspector.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];        
         YLimStd = [min(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all'),...
             max(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all')]*1.05;
         XLimStd = myAxes.inspector.XLim;
         
-        % qMats.cardiac_data;  % #Lambda x time x #channels
-        wl1Norm = (qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel)-YLimStd(1))./ (YLimStd(2)-YLimStd(1));
-        wl2Norm = (qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel)-YLimStd(1))./ (YLimStd(2)-YLimStd(1));
-        YLimStd = [0,1.05];
+        % Normalization of cardiac_data between [a,b]
+        a = -1;
+        b =  1;
+        cardiac_wl1_norm = a + (((qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel)-YLimStd(1)).*(b-a))./ (YLimStd(2)-YLimStd(1)));
+        cardiac_wl2_norm = a + (((qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel)-YLimStd(1)).*(b-a))./ (YLimStd(2)-YLimStd(1)));
+        YLimStd = [a,b].*1.05;
         cla(myAxes.inspector);
-%        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
-%            qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),,'-b');
+
         plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...            
-            wl1Norm,'-b');
+            cardiac_wl1_norm,'-b');
         hold(myAxes.inspector,'on');
-%        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
-%            qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),'-r');
         plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...            
-            wl2Norm,'-r');
+            cardiac_wl2_norm,'-r');
         
-        %yLab = myAxes.inspector.YLim(1)+((myAxes.inspector.YLim(2)-myAxes.inspector.YLim(1))*0.71);
-        %xLab = myAxes.inspector.XLim(1)+((myAxes.inspector.XLim(2)-myAxes.inspector.XLim(1))*0.93);
-        %text(myAxes.inspector,xLab,yLab,['Channel:',num2str(iChannel)]);
         strLgnds = {'Lambda 1','Lambda 2'};
-        updateQPlots(source.Parent);
+        
+        updateQPlots(dViewCheckb,[]);
 
         if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.n_windows*qMats.sampPerWindow)
             xRect = 0.5; %Because of the offset at the begining of a window
@@ -414,11 +445,16 @@ end
                 [t(xLimWindow(1)),t(xLimWindow(2))],...
                 'YData',YLimStd,'CData',poiMatrgb,'AlphaData',alphaMat);
             
-            %onsets
+            % Drawing onsets
             c = sum(conditions_mask);
             COI = find(conditions_mask);
-            colorOnsets = [linspace(0.5,1,c)',...
-                linspace(0,0.5,c)',linspace(1,0,c)'];
+            if c<9
+                 colorOnsets = colorcube(8);
+            else
+                colorOnsets = colorcube(c+1);
+                colorOnsets = colorOnsets(1:end-1,:);
+            end
+            
             for j=1:c
                 %mapping from 0,1 to 0,25%ofPeakToPeak
                 yOnset = (s(xLimWindow(1):xLimWindow(2),COI(j))*(YLimStd(2)-YLimStd(1))*0.25)-abs(YLimStd(1));
@@ -451,9 +487,9 @@ end
                 'Color','red','FontSize',10,'FontWeight','bold','BackgroundColor','#FFFF00',...
                 'Margin',1,'Clipping','on',...
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
-            %graphical debug
-            graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
-                qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs);
+%             %--graphical debug
+%             graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
+%                 qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs);
         end
         myAxes.inspector.YLim = YLimStd;
         myAxes.inspector.XLim = XLimStd;
@@ -765,100 +801,6 @@ end
 
     end
 
-
-    function viewMode(source,event)
-        nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
-        qMats = nirsplot_param.quality_matrices;
-        myAxes = nirsplot_param.main_fig_axes;
-        n_channels = nirsplot_param.n_channels;
-        
-        sci_array = qMats.sci_array;
-        power_array = qMats.power_array;
-        combo_array = qMats.combo_array;
-        combo_array_expanded = qMats.combo_array_expanded;
-      
-        checked = source.Value;
-        
-        if checked
-            % Scalp Contact Index
-            imagesc(myAxes.sci,sci_array);
-            myAxes.sci.CLim = [0,1];
-            myAxes.sci.YLim =[1, n_channels];
-            %myAxes.sci.XLim =[1, size(sci_array,2)];
-            % myAxes.sci.XTick = round(linspace(1,qMats.n_windows,8));
-            % myAxes.sci.XTickLabel = num2mstr(round(linspace(1,qMats.n_windows*qMats.sampPerWindow,8)));
-            colormap(myAxes.sci,"hot");
-            colorbar(myAxes.sci,"eastoutside","Ticks",[0 0.8 1]);
-            myAxes.sci.YLabel.String = 'Channel #';
-            myAxes.sci.YLabel.FontWeight = 'bold';
-
-            % Power peak
-            imPower = imagesc(myAxes.power,power_array);
-            myAxes.power.CLim = [0, 0.12];
-            myAxes.power.YLim =[1, n_channels];
-            %myAxes.power.XLim =[1, size(power_array,2)];
-            colormap(myAxes.power,"hot");
-            colorbar(myAxes.power,"eastoutside","Ticks",[0 0.1 0.12]);
-            %        h.TickLabels ={'0','0.10*','0.12'};
-            myAxes.power.YLabel.String = 'Channel #';
-            myAxes.power.YLabel.FontWeight = 'bold';
-            
-            
-            % Combo quality
-            imagesc(myAxes.combo,combo_array_expanded);
-            myAxes.combo.CLim = [0, 3];
-            myAxes.combo.YLim =[1, n_channels];
-            %myAxes.combo.XLim =[1, size(combo_array,2)];
-            %colormap(myAxes.combo,[0 0 0;1 1 1]);
-            % SCI,Power   combo_array_expanded    QualityColor
-            %  0,0              0                   [0 0    0]
-            %  0,1              1                   [1 0    0]
-            %  2,0              2                   [1 0.64 0]
-            %  2,1              3                   [0 1    0]
-            colormap(myAxes.combo,[0 0 0; 1 0 0; 1 0.64 0; 0 1 0]);
-            colorbar(myAxes.combo,"eastoutside","Ticks",[0 1 2 3],...
-                'TickLabels',...
-                {[char(hex2dec('2717')),'SCI  ', char(hex2dec('2717')),'Power'],...
-                 [char(hex2dec('2717')),'SCI  ', char(hex2dec('2713')),'Power'],...
-                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2717')),'Power'],...
-                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
-            myAxes.combo.YLabel.String = 'Channel #';
-            myAxes.combo.YLabel.FontWeight = 'bold';
-        else
-            % Scalp Contact Index
-            imagesc(myAxes.sci,sci_array);
-            myAxes.sci.CLim = [0,1];
-            myAxes.sci.YLim =[1, n_channels];
-            %myAxes.sci.XLim =[1, size(sci_array,2)];
-            % myAxes.sci.XTick = round(linspace(1,qMats.n_windows,8));
-            % myAxes.sci.XTickLabel = num2mstr(round(linspace(1,qMats.n_windows*qMats.sampPerWindow,8)));
-            colormap(myAxes.sci,"gray");
-            colorbar(myAxes.sci,"eastoutside","Ticks",[0 0.8 1]);
-            myAxes.sci.YLabel.String = 'Channel #';
-            myAxes.sci.YLabel.FontWeight = 'bold';
-
-            % Power peak
-            imagesc(myAxes.power,power_array);
-            myAxes.power.CLim = [0, 0.12];
-            myAxes.power.YLim =[1, n_channels];
-            %myAxes.power.XLim =[1, size(power_array,2)];
-            colormap(myAxes.power,"gray");
-            colorbar(myAxes.power,"eastoutside","Ticks",[0 0.1 0.12]);
-            %        h.TickLabels ={'0','0.10*','0.12'};
-            myAxes.power.YLabel.String = 'Channel #';
-            myAxes.power.YLabel.FontWeight = 'bold';
-
-            % Combo quality
-            imagesc(myAxes.combo,combo_array);
-            myAxes.combo.CLim = [0, 1];
-            myAxes.combo.YLim =[1, n_channels];
-            %myAxes.combo.XLim =[1, size(combo_array,2)];
-            colormap(myAxes.combo,[0 0 0;1 1 1]);
-            colorbar(myAxes.combo,"eastoutside","Ticks",[0 1]);
-            myAxes.combo.YLabel.String = 'Channel #';
-            myAxes.combo.YLabel.FontWeight = 'bold';
-        end
-    end
 
     function graphicDebug(window1,window2,fs)
         %cross-correlate the two wavelength signals - both should have cardiac pulsations
