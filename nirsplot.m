@@ -291,7 +291,8 @@ end
         alphaMat = woi.mat * sclAlpha;
         
         detailView = source.Value;
-        mygray = [0 0 0; 0.7 0.7 0.7; 1 1 1];
+        mygray = [0 0 0; repmat([0.7 0.7 0.7],100,1); 1 1 1];
+        mymap = [0 0 0;repmat([1 0 0],100,1);1 1 1 ];
         if detailView            
             % Scalp Contact Index
             imagesc(myAxes.sci,sci_array);
@@ -300,8 +301,12 @@ end
             myAxes.sci.CLim = [a, b];
             myAxes.sci.YLim =[1, n_channels];
             colormap(myAxes.sci,mygray);
-            colorbar(myAxes.sci,"eastoutside","Ticks",[(a+0.025) (a+b)*0.5 (b-0.025)],...
-                'TickLabels',{'Bad','Dubious','Good'},'Limits',[a-0.0125 b+0.0125]);
+            colorbar(myAxes.sci,"eastoutside",...
+                "Ticks",[(a-(b-a)) a  b b+(b-a)],...
+                'TickLabels',{['<',num2str(a-(b-a))],...
+                num2str(a),num2str(b),...
+                ['>',num2str(b+(b-a))]},...
+                'Limits',[(a-(b-a)) b+(b-a)]);
             myAxes.sci.YLabel.String = 'Channel #';
             myAxes.sci.YLabel.FontWeight = 'bold';
             
@@ -312,8 +317,12 @@ end
             myAxes.power.CLim = [a, b];
             myAxes.power.YLim =[1, n_channels];
             colormap(myAxes.power,mygray);
-            colorbar(myAxes.power,"eastoutside","Ticks",[(a+0.005) (a+b)*0.5 (b-0.005)],...
-                'TickLabels',{'Bad','Dubious','Good'},'Limits',[a-0.0025 b+0.0025]);
+            colorbar(myAxes.power,"eastoutside",...
+                "Ticks",[(a-(b-a)) a  b b+(b-a)],...
+                'TickLabels',{['<',num2str(a-(b-a))],...
+                num2str(a),num2str(b),...
+                ['>',num2str(b+(b-a))]},...
+                'Limits',[(a-(b-a)) b+(b-a)]);
             myAxes.power.YLabel.String = 'Channel #';
             myAxes.power.YLabel.FontWeight = 'bold';
             
@@ -340,7 +349,10 @@ end
             myAxes.combo.YLabel.FontWeight = 'bold';
             
             % Drawing green bands
-            hold(myAxes.combo,'on');
+            imagesc(myAxes.sci,woiMatrgb,'AlphaData',alphaMat);
+            %hold(myAxes.power,'on');
+            imagesc(myAxes.power,woiMatrgb,'AlphaData',alphaMat);
+            %hold(myAxes.combo,'on');
             imagesc(myAxes.combo,woiMatrgb,'AlphaData',alphaMat);
         else            
             % Scalp Contact Index
@@ -378,11 +390,11 @@ end
             myAxes.combo.YLabel.FontWeight = 'bold';
             
             % Drawing green bands
-            hold(myAxes.sci,'on');
+            %hold(myAxes.sci,'on');
             imagesc(myAxes.sci,woiMatrgb,'AlphaData',alphaMat);
-            hold(myAxes.power,'on');
+            %hold(myAxes.power,'on');
             imagesc(myAxes.power,woiMatrgb,'AlphaData',alphaMat);
-            hold(myAxes.combo,'on');
+            %hold(myAxes.combo,'on');
             imagesc(myAxes.combo,woiMatrgb,'AlphaData',alphaMat);
         end
 
