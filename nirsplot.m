@@ -57,11 +57,13 @@ if nargin < 7
 end
 
 if nargin<6
-  cond_mask = ones(1,size(rawDotNirs.s,2));
+    cond_mask = ones(1,size(rawDotNirs.s,2));
 end
 
 % Create GUI
 [main_fig_axes,main_fig] = createGUI();
+
+
 nirsplot_parameters.fcut = fcut_;
 nirsplot_parameters.window = window_;
 nirsplot_parameters.overlap = overlap_;
@@ -103,7 +105,7 @@ end
     function [main_fig_axes,main_fig] = createGUI()
         
         % Main figure container
-        pos.main = [0.125 0.05 0.75 0.8]; % left, bottom, width, height
+        pos.main = [0.125 0.05 0.75 0.85]; % left, bottom, width, height
         main_fig = figure('Units','normalized',...
             'Position',pos.main,'Visible','off',...
             'Name','NIRSPlot','NumberTitle','off','MenuBar','none');
@@ -112,7 +114,7 @@ end
         % SCI
         myAxDim.width = 0.9;
         myAxDim.height = (1/4)*0.75; % Four axes over the 80% of the figure
-        myAxDim.xSep = 0.05;
+        myAxDim.xSep = 0.03;
         myAxDim.ySep = (1 - myAxDim.height*4) / 5;
         
         pos.inspAx = [myAxDim.xSep,myAxDim.ySep+(0*(myAxDim.height+myAxDim.ySep)),...
@@ -123,8 +125,7 @@ end
         main_fig_axes.inspector.XLabel.String = 'Time (s)';
         main_fig_axes.inspector.YLabel.String = 'Channel #';
         
-        
-        pos.comboAx = [myAxDim.xSep,myAxDim.ySep+(1*(myAxDim.height+myAxDim.ySep)),...
+        pos.comboAx = [myAxDim.xSep,myAxDim.ySep+(1.05*(myAxDim.height+myAxDim.ySep)),...
             myAxDim.width,myAxDim.height];
         main_fig_axes.combo = axes(main_fig,'Units','normalized',...
             'Position',pos.comboAx,...
@@ -143,21 +144,25 @@ end
         main_fig_axes.sci = axes(main_fig,'Units','normalized',...
             'Position',pos.sciAx,...
             'Title','SCI');
+        imagesc(main_fig_axes.sci,0,'Tag','imagescSci');
+        colorbar(main_fig_axes.sci,'Tag','cbarSci');
         main_fig_axes.sci.YLabel.String = 'Channel #';
+        main_fig_axes.sci.YLabel.FontWeight = 'bold';
         
-        pos.inspectBtn = [myAxDim.xSep, (myAxDim.height+myAxDim.ySep),...
-            0.08, myAxDim.ySep*0.8];
+        
+        pos.inspectBtn = [myAxDim.xSep, (myAxDim.height+myAxDim.ySep)*1.025,...
+            0.08, myAxDim.ySep*0.7];
         inspectBtn = uicontrol(main_fig,'Style', 'pushbutton', 'String', 'Inspect',...
             'FontSize',14,'FontWeight','bold','Units','normalized','Position', pos.inspectBtn,...
             'Callback', @inspectActive);
         
-        pos.helpBtn = [(pos.inspectBtn(1)+pos.inspectBtn(3))*1.15,...
+        pos.helpBtn = [pos.inspectBtn(1)+pos.inspectBtn(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.05,pos.inspectBtn(4)];
         helpBtn = uicontrol(main_fig,'Style','pushbutton','String','?',...
             'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
             pos.helpBtn,'Callback', @showHelp);
         
-        pos.chSelBtn = [(pos.helpBtn(1)+pos.helpBtn(3))*1.15,...
+        pos.chSelBtn = [pos.helpBtn(1)+pos.helpBtn(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.15,pos.inspectBtn(4)];
         chSelBtn = uicontrol(main_fig,'Style','pushbutton','String','Channel selection',...
             'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
@@ -169,19 +174,20 @@ end
         %     'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
         %     pos.woiSelBtn,'Callback', @selectGoodWOI);
         
-        pos.SaveBtn = [2.5*(pos.chSelBtn(3)+pos.chSelBtn(3)),...
+        
+        pos.AdvView = [pos.chSelBtn(1)+pos.chSelBtn(3)+myAxDim.xSep,...
+            pos.inspectBtn(2),...
+            0.1,...
+            pos.inspectBtn(4)];
+        uicontrol(main_fig,'Style','checkbox','String','Advanced view',...
+            'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
+            pos.AdvView,'Callback', @updateQPlots,'Tag','detViewCheckb');
+        
+        pos.SaveBtn = [pos.AdvView(1)+pos.AdvView(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.1,pos.inspectBtn(4)];
         SaveBtn = uicontrol(main_fig,'Style','pushbutton','String','Save .nirs',...
             'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
             pos.SaveBtn,'Callback', @save2dotnirs);
-        
-        pos.AdvView = [myAxDim.width,...
-            pos.inspectBtn(2)-0.05,...
-            0.1,...
-            pos.inspectBtn(4)];        
-        uicontrol(main_fig,'Style','checkbox','String','Detailed view',...
-            'FontSize',10,'FontWeight','bold','Units','normalized','Position',...
-            pos.AdvView,'Callback', @updateQPlots,'Tag','detViewCheckb');
         
         %main_fig.Visible = 'on';
         
@@ -285,21 +291,39 @@ end
         power_array = qMats.power_array;
         combo_array = qMats.combo_array;
         combo_array_expanded = qMats.combo_array_expanded;
-
+        imagescSci = findobj('Tag','imagescSci');
+        cbarSci =  findobj('Tag','cbarSci');
+        
         woiMatrgb = zeros(n_channels,qMats.n_windows,3);
         woiMatrgb(:,:,2) = woi.mat;
         alphaMat = woi.mat * sclAlpha;
         
-        detailView = source.Value;
+        advancedView = source.Value;
         mygray = [0 0 0; repmat([0.7 0.7 0.7],100,1); 1 1 1];
         mymap = [0 0 0;repmat([1 0 0],100,1);1 1 1 ];
-        if detailView            
+        
+        if advancedView
+            qualityColor = [0 0 0; 0.6 0.6 0.6; 1 1 1];
             % Scalp Contact Index
-            imagesc(myAxes.sci,sci_array);
+            % thresholds a & b
             a = 0.6;
             b = 0.8;
+            sci_expanded = zeros(size(sci_array));
+            sci_expanded(sci_array <  a) = 0;
+            sci_expanded(sci_array >= a & sci_array<b) = 1;
+            sci_expanded(sci_array >= b) = 2;
+            %             imagesc(myAxes.sci,sci_expanded);
+            %             colormap(myAxes.sci,qualityColor);
+            %             myAxes.sci.CLim = [0,2];
+            %             colorbar(myAxes.sci,"eastoutside",...
+            %                 "Ticks",[ 0 1 2 ],...
+            %                 'TickLabels',{[char(hex2dec('2717')), 'SCI <=',num2str(a)],...
+            %                 [num2str(a),'< SCI <',num2str(b)],...
+            %                 [char(hex2dec('2713')), 'SCI >=',num2str(b)]},...
+            %                 'Limits',[0 2],...
+            %                 'ButtonDownFcn',@sciThreshold);
+            imagesc(myAxes.sci,sci_array);
             myAxes.sci.CLim = [a, b];
-            myAxes.sci.YLim =[1, n_channels];
             colormap(myAxes.sci,mygray);
             colorbar(myAxes.sci,"eastoutside",...
                 "Ticks",[(a-(b-a)) a  b b+(b-a)],...
@@ -307,24 +331,37 @@ end
                 num2str(a),num2str(b),...
                 ['>',num2str(b+(b-a))]},...
                 'Limits',[(a-(b-a)) b+(b-a)]);
-            myAxes.sci.YLabel.String = 'Channel #';
-            myAxes.sci.YLabel.FontWeight = 'bold';
             
             % Power peak
-            imagesc(myAxes.power,power_array);
             a = 0.06;
             b = 0.1;
-            myAxes.power.CLim = [a, b];
-            myAxes.power.YLim =[1, n_channels];
-            colormap(myAxes.power,mygray);
+            power_expanded = zeros(size(power_array));
+            power_expanded(power_array <  a) = 0;
+            power_expanded(power_array >= a & power_array<b) = 1;
+            power_expanded(power_array >= b) = 2;
+            imagesc(myAxes.power,power_expanded);
+            colormap(myAxes.power,qualityColor);
+            myAxes.power.CLim = [0,2];
             colorbar(myAxes.power,"eastoutside",...
-                "Ticks",[(a-(b-a)) a  b b+(b-a)],...
-                'TickLabels',{['<',num2str(a-(b-a))],...
-                num2str(a),num2str(b),...
-                ['>',num2str(b+(b-a))]},...
-                'Limits',[(a-(b-a)) b+(b-a)]);
-            myAxes.power.YLabel.String = 'Channel #';
-            myAxes.power.YLabel.FontWeight = 'bold';
+                "Ticks",[ 0 1 2 ],...
+                'TickLabels',{[char(hex2dec('2717')), 'Power <=',num2str(a)],...
+                [num2str(a),'< Power <',num2str(b)],...
+                [char(hex2dec('2713')), 'Power >=',num2str(b)]},...
+                'Limits',[0 2]);
+            %             imagesc(myAxes.power,power_array);
+            %             a = 0.06;
+            %             b = 0.1;
+            %             myAxes.power.CLim = [a, b];
+            %             myAxes.power.YLim =[1, n_channels];
+            %             colormap(myAxes.power,mygray);
+            %             colorbar(myAxes.power,"eastoutside",...
+            %                 "Ticks",[(a-(b-a)) a  b b+(b-a)],...
+            %                 'TickLabels',{['<',num2str(a-(b-a))],...
+            %                 num2str(a),num2str(b),...
+            %                 ['>',num2str(b+(b-a))]},...
+            %                 'Limits',[(a-(b-a)) b+(b-a)]);
+            %             myAxes.power.YLabel.String = 'Channel #';
+            %             myAxes.power.YLabel.FontWeight = 'bold';
             
             % Combo quality
             imagesc(myAxes.combo,combo_array_expanded);
@@ -337,7 +374,7 @@ end
             %  0,1              1                   [0 0    0]
             %  2,0              2                   [0.7 0.7 0.7]
             %  2,1              3                   [0 1    0]
-            qualityColor = [0 0 0; 0 0 0; 0.6 0.6 0.6; 1 1 1];
+            qualityColor = [0 0 0; 0 0 0; 1 0 0; 1 1 1];
             colormap(myAxes.combo,qualityColor);
             colorbar(myAxes.combo,"eastoutside","Ticks",[1.3 1.5 2.25 2.75],...
                 'TickLabels',...
@@ -348,24 +385,32 @@ end
             myAxes.combo.YLabel.String = 'Channel #';
             myAxes.combo.YLabel.FontWeight = 'bold';
             
+            
+            hold(myAxes.sci,'on');
+            hold(myAxes.power,'on');
+            hold(myAxes.combo,'on');
+            
             % Drawing green bands
             imagesc(myAxes.sci,woiMatrgb,'AlphaData',alphaMat);
             %hold(myAxes.power,'on');
             imagesc(myAxes.power,woiMatrgb,'AlphaData',alphaMat);
             %hold(myAxes.combo,'on');
             imagesc(myAxes.combo,woiMatrgb,'AlphaData',alphaMat);
-        else            
+        else
             % Scalp Contact Index
             sci_threshold = 0.8;
             sci_mask = sci_array>=sci_threshold;
             imagesc(myAxes.sci,sci_mask);
+            %imagescSci.CData = sci_mask;
             myAxes.sci.CLim = [0,1];
             myAxes.sci.YLim =[1, n_channels];
-            colormap(myAxes.sci,gray(2));
+            myAxes.sci.XLim = [1, size(sci_mask,2)];
+            myAxes.sci.Colormap = gray(2);
+            %cbarSci.Ticks = [0.25 0.75];
+            %cbarSci.Limits = [0, 1];
+            %cbarSci.TickLabels = {'Bad','Good'};
             colorbar(myAxes.sci,"eastoutside","Ticks",[0.25 0.75],...
                 'Limits',[0,1],'TickLabels',{'Bad','Good'});
-            myAxes.sci.YLabel.String = 'Channel #';
-            myAxes.sci.YLabel.FontWeight = 'bold';
             
             % Power peak
             power_threshold = 0.1;
@@ -390,14 +435,14 @@ end
             myAxes.combo.YLabel.FontWeight = 'bold';
             
             % Drawing green bands
-            %hold(myAxes.sci,'on');
+            hold(myAxes.sci,'on');
+            hold(myAxes.power,'on');
+            hold(myAxes.combo,'on');
             imagesc(myAxes.sci,woiMatrgb,'AlphaData',alphaMat);
-            %hold(myAxes.power,'on');
             imagesc(myAxes.power,woiMatrgb,'AlphaData',alphaMat);
-            %hold(myAxes.combo,'on');
             imagesc(myAxes.combo,woiMatrgb,'AlphaData',alphaMat);
         end
-
+        
         % For visual consistency among axes
         myAxes.inspector.YLimMode = 'manual';
         myAxes.inspector.YLabel.String = 'Channel #';
@@ -421,7 +466,7 @@ end
         sclAlpha = nirsplot_param.sclAlpha;
         dViewCheckb = findobj('Tag','detViewCheckb');
         
-        myAxes.inspector.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];        
+        myAxes.inspector.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];
         YLimStd = [min(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all'),...
             max(qMats.cardiac_data(:,xLimWindow(1):xLimWindow(2),iChannel),[],'all')]*1.05;
         XLimStd = myAxes.inspector.XLim;
@@ -433,17 +478,17 @@ end
         cardiac_wl2_norm = a + (((qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel)-YLimStd(1)).*(b-a))./ (YLimStd(2)-YLimStd(1)));
         YLimStd = [a,b].*1.05;
         cla(myAxes.inspector);
-
-        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...            
+        
+        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
             cardiac_wl1_norm,'-b');
         hold(myAxes.inspector,'on');
-        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...            
+        plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
             cardiac_wl2_norm,'-r');
         
         strLgnds = {'Lambda 1','Lambda 2'};
         
         updateQPlots(dViewCheckb,[]);
-
+        
         if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.n_windows*qMats.sampPerWindow)
             xRect = 0.5; %Because of the offset at the begining of a window
             yRect = iChannel-0.5;
@@ -461,7 +506,7 @@ end
             c = sum(conditions_mask);
             COI = find(conditions_mask);
             if c<9
-                 colorOnsets = colorcube(8);
+                colorOnsets = colorcube(8);
             else
                 colorOnsets = colorcube(c+1);
                 colorOnsets = colorOnsets(1:end-1,:);
@@ -482,26 +527,26 @@ end
             wRect = 1;
             hRect = 1;
             
-            fprintf('SCI:%.2f \t Power:%.2f\n',qMats.sci_array(iChannel,iWindow),qMats.power_array(iChannel,iWindow));
+            fprintf('SCI:%.3f \t Power:%.3f\n',qMats.sci_array(iChannel,iWindow),qMats.power_array(iChannel,iWindow));
             textHAlign = 'left';
             textVAlign = 'top';
             if xRect > (qMats.n_windows/2)
-               textHAlign = 'right'; 
+                textHAlign = 'right';
             end
             if yRect > (n_channels/2)
-               textVAlign = 'bottom';
+                textVAlign = 'bottom';
             end
-            text(myAxes.power,xRect,yRect,num2str(qMats.power_array(iChannel,iWindow),2),...
+            text(myAxes.power,xRect,yRect,num2str(qMats.power_array(iChannel,iWindow),'%.3f'),...
                 'Color','red','FontSize',10,'FontWeight','bold','BackgroundColor','#FFFF00',...
                 'Margin',1,'Clipping','on',...
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
-            text(myAxes.sci,xRect,yRect,num2str(qMats.sci_array(iChannel,iWindow),2),...
+            text(myAxes.sci,xRect,yRect,num2str(qMats.sci_array(iChannel,iWindow),'%.3f'),...
                 'Color','red','FontSize',10,'FontWeight','bold','BackgroundColor','#FFFF00',...
                 'Margin',1,'Clipping','on',...
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
-%             %--graphical debug
-%             graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
-%                 qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs);
+            %             %--graphical debug
+            %             graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
+            %                 qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs);
         end
         myAxes.inspector.YLim = YLimStd;
         myAxes.inspector.XLim = XLimStd;
@@ -597,53 +642,43 @@ end
         
         mean_sci_link  = mean(sci_array(:,idxPoi),2);
         std_sci_link  = std(sci_array(:,idxPoi),0,2);
-        good_sci_link = sum(sci_array(:,idxPoi)>0.8,2)/size(sci_array(:,idxPoi),2);
+        good_sci_link = sum(sci_array(:,idxPoi)>=0.8,2)/size(sci_array(:,idxPoi),2);
         mean_sci_window  = mean(sci_array(:,idxPoi),1);
         std_sci_window  = std(sci_array(:,idxPoi),0,1);
-        good_sci_window = sum(sci_array(:,idxPoi)>0.8,1)/size(sci_array(:,idxPoi),1);
+        good_sci_window = sum(sci_array(:,idxPoi)>=0.8,1)/size(sci_array(:,idxPoi),1);
         
         mean_power_link  = mean(power_array(:,idxPoi),2);
         std_power_link  = std(power_array(:,idxPoi),0,2);
-        good_power_link = sum(power_array(:,idxPoi)>0.1,2)/size(power_array(:,idxPoi),2);
+        good_power_link = sum(power_array(:,idxPoi)>=0.1,2)/size(power_array(:,idxPoi),2);
         mean_power_window  = mean(power_array(:,idxPoi),1);
         std_power_window  = std(power_array(:,idxPoi),0,1);
-        good_power_window = sum(power_array(:,idxPoi)>0.1,1)/size(power_array(:,idxPoi),1);
+        good_power_window = sum(power_array(:,idxPoi)>=0.1,1)/size(power_array(:,idxPoi),1);
         
         combo_array = (sci_array >= 0.8) & (power_array >= 0.10);
         combo_array_expanded = 2*(sci_array >= 0.8) + (power_array >= 0.10);
         
         mean_combo_link  = mean(combo_array,2);
         std_combo_link  = std(combo_array,0,2);
-
+        
         good_combo_link  = mean(combo_array(:,idxPoi),2);
         mean_combo_window  = mean(combo_array,1);
         std_combo_window  = std(combo_array,0,1);
-
+        
         idx_gcl = good_combo_link>=qltyThld;
         good_combo_window = mean(combo_array(idx_gcl,:),1);
         
         % Detecting experimental blocks
         exp_blocks = zeros(1,length(woi.start));
         for iblock = 1:length(woi.start)
-           block_start_w = woi.start(iblock);
-           block_end_w = woi.end(iblock);
-           exp_blocks(iblock) = mean(good_combo_window(block_start_w:block_end_w));
+            block_start_w = woi.start(iblock);
+            block_end_w = woi.end(iblock);
+            exp_blocks(iblock) = mean(good_combo_window(block_start_w:block_end_w));
         end
-
+        
         % Detect artifacts and bad links
         bad_links = find(mean_combo_link<qltyThld);
         bad_windows = find(mean_combo_window<qltyThld);
         
-%         f2=figure(2);
-%         af2=axes(f2);
-%         idxActiveWindows = idxPoi;
-%         idxUnactiveWindows = ~idxPoi;
-%         bp=bar(af2,good_combo_window);
-%         bp.FaceColor = 'flat';
-%         ylim([0,1]);
-%         bp.CData(idxUnactiveWindows,:) = repmat([0.6, 0.6, 0.6],sum(idxUnactiveWindows),1);
-%         bp.CData(idxActiveWindows,:) = repmat([0 1 0],sum(idxActiveWindows),1);
-      
         % Packaging sci, peakpower and combo
         qualityMats.sci_array    = sci_array;
         qualityMats.power_array  = power_array;
@@ -676,8 +711,8 @@ end
         t = nirsplot_parameters.t;
         mergewoi_flag = nirsplot_parameters.mergewoi_flag;
         n_channels = nirsplot_parameters.n_channels;
-        conditions_mask = logical(nirsplot_parameters.cond_mask);        
-
+        conditions_mask = logical(nirsplot_parameters.cond_mask);
+        
         allowed_samp = window_samples*n_windows;
         poi = sum(s(1:allowed_samp,conditions_mask),2);
         poi = poi(1:allowed_samp);
@@ -792,25 +827,25 @@ end
 %% -------------------------------------------------------------------------
     function saving_status = save2dotnirs(source, events)
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
-         raw = getappdata(source.Parent,'rawDotNirs');
+        raw = getappdata(source.Parent,'rawDotNirs');
         active_channels = nirsplot_param.quality_matrices.active_channels;
-        % saving the indices of good-quality channels     
-            SD = raw.SD;
-            SD.MeasListAct = [active_channels; ones(size(SD.MeasList,1)/2,1)];
-            t = raw.t;
-            d = raw.d;            
-            s = raw.s;            
-            aux = raw.aux;
-            tIncMan = ones(length(t),1);
-            save('dotNirs_nirsplot.nirs','SD','t','d','s','aux','tIncMan');
-            %Notify to the user if the new file was succesfully created     
-            saving_status = exist('dotNirs_nirsplot.nirs','file');
-            if saving_status
-                msgbox('Operation Completed','Success');
-            else
-                msgbox('Operation Failed','Error');
-            end
-
+        % saving the indices of good-quality channels
+        SD = raw.SD;
+        SD.MeasListAct = [active_channels; ones(size(SD.MeasList,1)/2,1)];
+        t = raw.t;
+        d = raw.d;
+        s = raw.s;
+        aux = raw.aux;
+        tIncMan = ones(length(t),1);
+        save('dotNirs_nirsplot.nirs','SD','t','d','s','aux','tIncMan');
+        %Notify to the user if the new file was succesfully created
+        saving_status = exist('dotNirs_nirsplot.nirs','file');
+        if saving_status
+            msgbox('Operation Completed','Success');
+        else
+            msgbox('Operation Failed','Error');
+        end
+        
     end
 
 
@@ -831,5 +866,9 @@ end
         subplot(2,1,2);
         plot(f3.Children(1),pxx);
     end
-    
+
+    function sciThreshold(source, event)
+        event.IntersectionPoint
+        
+    end
 end %end of nirsplot function definition
