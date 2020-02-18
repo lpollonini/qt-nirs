@@ -80,7 +80,7 @@ nirsplot_parameters.fs = frequency_samp;
 nirsplot_parameters.mergewoiFlag = true;
 nirsplot_parameters.cond_mask = cond_mask;
 nirsplot_parameters.save_report_table = false;
-nirsplot_parameters.sclAlpha = 0.15;
+nirsplot_parameters.sclAlpha = 0.98;
 nirsplot_parameters.main_fig_axes = main_fig_axes;
 setappdata(main_fig,'nirsplot_parameters',nirsplot_parameters);
 setappdata(main_fig,'rawDotNirs',rawDotNirs);
@@ -295,8 +295,8 @@ end
         cbarSci =  findobj('Tag','cbarSci');
         
         woiMatrgb = zeros(n_channels,qMats.n_windows,3);
-        woiMatrgb(:,:,2) = woi.mat;
-        alphaMat = woi.mat * sclAlpha;
+        woiMatrgb(:,:,:) = repmat(~woi.mat,1,1,3)*(hex2dec('bf')/255);
+        alphaMat = ~woi.mat * sclAlpha;
         
         advancedView = source.Value;
         mygray = [0 0 0; repmat([0.7 0.7 0.7],100,1); 1 1 1];
@@ -401,14 +401,13 @@ end
             sci_threshold = 0.8;
             sci_mask = sci_array>=sci_threshold;
             imagesc(myAxes.sci,sci_mask);
-            %imagescSci.CData = sci_mask;
             myAxes.sci.CLim = [0,1];
             myAxes.sci.YLim =[1, n_channels];
-            myAxes.sci.XLim = [1, size(sci_mask,2)];
+            ticksVals = linspace(0,qMats.n_windows,8);
+            myAxes.sci.XAxis.TickValues=ticksVals(2:end-1);
+            ticksLab = round(linspace(0,nirsplot_param.t(end),8));
+            myAxes.sci.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
             myAxes.sci.Colormap = gray(2);
-            %cbarSci.Ticks = [0.25 0.75];
-            %cbarSci.Limits = [0, 1];
-            %cbarSci.TickLabels = {'Bad','Good'};
             colorbar(myAxes.sci,"eastoutside","Ticks",[0.25 0.75],...
                 'Limits',[0,1],'TickLabels',{'Bad','Good'});
             
@@ -418,7 +417,9 @@ end
             imagesc(myAxes.power,power_mask);
             myAxes.power.CLim = [0, 1];
             myAxes.power.YLim =[1, n_channels];
-            colormap(myAxes.power,gray(2));
+            myAxes.power.XAxis.TickValues=ticksVals(2:end-1);
+            myAxes.power.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
+            myAxes.power.Colormap = gray(2);
             colorbar(myAxes.power,"eastoutside","Ticks",[0.25 0.75],...
                 'Limits',[0,1],'TickLabels',{'Bad','Good'});
             myAxes.power.YLabel.String = 'Channel #';
@@ -428,7 +429,9 @@ end
             imagesc(myAxes.combo,combo_array);
             myAxes.combo.CLim = [0, 1];
             myAxes.combo.YLim =[1, n_channels];
-            colormap(myAxes.combo,[0 0 0;1 1 1]);
+            colormap(myAxes.combo,[0 0 0;1 1 1]); 
+            myAxes.combo.XAxis.TickValues=ticksVals(2:end-1);
+            myAxes.combo.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
             colorbar(myAxes.combo,"eastoutside","Ticks",[0.25 0.75],...
                 'Limits',[0,1],'TickLabels',{'Bad','Good'});
             myAxes.combo.YLabel.String = 'Channel #';
@@ -495,8 +498,8 @@ end
             wRect = qMats.n_windows;
             hRect = 1;
             poiMatrgb = zeros(n_channels,xLimWindow(2),3);
-            poiMatrgb(:,:,2) = repmat(repelem(woi.mat(1,:),qMats.sampPerWindow),n_channels,1);
-            alphaMat = poiMatrgb(:,:,2) * sclAlpha;
+            poiMatrgb(:,:,:) = repmat(repelem(~woi.mat(1,:),qMats.sampPerWindow),n_channels,1,3).*(hex2dec('bf')/255);
+            alphaMat = poiMatrgb(:,:,1) * sclAlpha;
             
             impoiMat = imagesc(myAxes.inspector,'XData',...
                 [t(xLimWindow(1)),t(xLimWindow(2))],...
