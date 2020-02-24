@@ -131,6 +131,9 @@ end
             'Position',pos.comboAx,...
             'Title','Overall quality');
         main_fig_axes.combo.YLabel.String = 'Channel #';
+        main_fig_axes.combo.YLabel.FontWeight = 'bold';
+        colorbar(main_fig_axes.combo,'Visible','off','Tag','colorb_combo')
+        
         
         pos.powerAx = [myAxDim.xSep,myAxDim.ySep+(2*(myAxDim.height+myAxDim.ySep)),...
             myAxDim.width,myAxDim.height];
@@ -138,17 +141,18 @@ end
             'Position',pos.powerAx,...
             'Title','Power peak');
         main_fig_axes.power.YLabel.String = 'Channel #';
+        main_fig_axes.power.YLabel.FontWeight = 'bold';
+        colorbar(main_fig_axes.power,'Visible','off','Tag','colorb_power')
+        
         
         pos.sciAx = [myAxDim.xSep,myAxDim.ySep+(3*(myAxDim.height+myAxDim.ySep)),...
             myAxDim.width,myAxDim.height];
         main_fig_axes.sci = axes(main_fig,'Units','normalized',...
             'Position',pos.sciAx,...
             'Title','SCI');
-        imagesc(main_fig_axes.sci,0,'Tag','imagescSci');
-        colorbar(main_fig_axes.sci,'Tag','cbarSci');
         main_fig_axes.sci.YLabel.String = 'Channel #';
         main_fig_axes.sci.YLabel.FontWeight = 'bold';
-        
+        colorbar(main_fig_axes.sci,'Visible','on','Tag','colorb_sci')
         
         pos.inspectBtn = [myAxDim.xSep, (myAxDim.height+myAxDim.ySep)*1.025,...
             0.08, myAxDim.ySep*0.7];
@@ -291,8 +295,6 @@ end
         power_array = qMats.power_array;
         combo_array = qMats.combo_array;
         combo_array_expanded = qMats.combo_array_expanded;
-        imagescSci = findobj('Tag','imagescSci');
-        cbarSci =  findobj('Tag','cbarSci');
         
         woiMatrgb = zeros(n_channels,qMats.n_windows,3);
         woiMatrgb(:,:,:) = repmat(~woi.mat,1,1,3)*(hex2dec('bf')/255);
@@ -302,9 +304,13 @@ end
         mygray = [0 0 0; repmat([0.7 0.7 0.7],100,1); 1 1 1];
         mymap = [0 0 0;repmat([1 0 0],100,1);1 1 1 ];
         
+        colorb_sci = findobj('Tag','colorb_sci');
         if advancedView
             qualityColor = [0 0 0; 0.6 0.6 0.6; 1 1 1];
             % Scalp Contact Index
+            %cla(myAxes.sci)
+            
+                  
             % thresholds a & b
             a = 0.6;
             b = 0.8;
@@ -312,25 +318,28 @@ end
             sci_expanded(sci_array <  a) = 0;
             sci_expanded(sci_array >= a & sci_array<b) = 1;
             sci_expanded(sci_array >= b) = 2;
-            %             imagesc(myAxes.sci,sci_expanded);
-            %             colormap(myAxes.sci,qualityColor);
-            %             myAxes.sci.CLim = [0,2];
-            %             colorbar(myAxes.sci,"eastoutside",...
-            %                 "Ticks",[ 0 1 2 ],...
-            %                 'TickLabels',{[char(hex2dec('2717')), 'SCI <=',num2str(a)],...
-            %                 [num2str(a),'< SCI <',num2str(b)],...
-            %                 [char(hex2dec('2713')), 'SCI >=',num2str(b)]},...
-            %                 'Limits',[0 2],...
-            %                 'ButtonDownFcn',@sciThreshold);
-            imagesc(myAxes.sci,sci_array);
-            myAxes.sci.CLim = [a, b];
-            colormap(myAxes.sci,mygray);
+            %--             Option 1
+            imagesc(myAxes.sci,sci_expanded);
+            colormap(myAxes.sci,qualityColor);
+            myAxes.sci.CLim = [0,2];
             colorbar(myAxes.sci,"eastoutside",...
-                "Ticks",[(a-(b-a)) a  b b+(b-a)],...
-                'TickLabels',{['<',num2str(a-(b-a))],...
-                num2str(a),num2str(b),...
-                ['>',num2str(b+(b-a))]},...
-                'Limits',[(a-(b-a)) b+(b-a)]);
+                "Ticks",[ 0 1 2 ],...
+                'TickLabels',{[char(hex2dec('2717')), 'SCI <=',num2str(a)],...
+                [num2str(a),'< SCI <',num2str(b)],...
+                [char(hex2dec('2713')), 'SCI >=',num2str(b)]},...
+                'Limits',[0 2],...
+                'ButtonDownFcn',@sciThreshold);
+            %--             Option 2
+            %             imagesc(myAxes.sci,sci_expanded);
+            %             myAxes.sci.CLim = [a, b];
+            %             colormap(myAxes.sci,mygray);
+            %             colorbar(myAxes.sci,"eastoutside",...
+            %                 "Ticks",[(a-(b-a)) a  b b+(b-a)],...
+            %                 'TickLabels',{['<',num2str(a-(b-a))],...
+            %                 num2str(a),num2str(b),...
+            %                 ['>',num2str(b+(b-a))]},...
+            %                 'Limits',[(a-(b-a)) b+(b-a)]);
+
             
             % Power peak
             a = 0.06;
@@ -366,7 +375,7 @@ end
             % Combo quality
             imagesc(myAxes.combo,combo_array_expanded);
             myAxes.combo.CLim = [1, 3];
-            myAxes.combo.YLim =[1, n_channels];
+            %myAxes.combo.YLim =[1, n_channels];
             %myAxes.combo.XLim =[1, size(combo_array,2)];
             %colormap(myAxes.combo,[0 0 0;1 1 1]);
             % SCI,Power   combo_array_expanded    QualityColor
@@ -384,8 +393,7 @@ end
                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
             myAxes.combo.YLabel.String = 'Channel #';
             myAxes.combo.YLabel.FontWeight = 'bold';
-            
-            
+                
             hold(myAxes.sci,'on');
             hold(myAxes.power,'on');
             hold(myAxes.combo,'on');
@@ -400,26 +408,34 @@ end
             % Scalp Contact Index
             sci_threshold = 0.8;
             sci_mask = sci_array>=sci_threshold;
+  
+            %cla(myAxes.sci);
             imagesc(myAxes.sci,sci_mask);
             myAxes.sci.CLim = [0,1];
-            myAxes.sci.YLim =[1, n_channels];
+            %myAxes.sci.YLim =[0.5, n_channels+0.5];
+            %myAxes.sci.XLim = [0.5 size(sci_mask,2)+0.5];
             ticksVals = linspace(0,qMats.n_windows,8);
             myAxes.sci.XAxis.TickValues=ticksVals(2:end-1);
             ticksLab = round(linspace(0,nirsplot_param.t(end),8));
             myAxes.sci.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
-            myAxes.sci.Colormap = gray(2);
-            colorbar(myAxes.sci,"eastoutside","Ticks",[0.25 0.75],...
-                'Limits',[0,1],'TickLabels',{'Bad','Good'});
+            myAxes.sci.Colormap = [0 0 0;1 1 1];
+            colorbar(myAxes.sci,'eastoutside',...
+                 'Tag','colorb_sci',...
+                 'Ticks',[0.25 0.75],...
+                 'Limits',[0,1],'TickLabels',{'Bad','Good'});            
+            myAxes.sci.YLabel.String = 'Channel #';
+            myAxes.sci.YLabel.FontWeight = 'bold';
+ 
             
             % Power peak
             power_threshold = 0.1;
             power_mask = power_array>=power_threshold;
             imagesc(myAxes.power,power_mask);
             myAxes.power.CLim = [0, 1];
-            myAxes.power.YLim =[1, n_channels];
+            %myAxes.power.YLim =[1, n_channels];
             myAxes.power.XAxis.TickValues=ticksVals(2:end-1);
             myAxes.power.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
-            myAxes.power.Colormap = gray(2);
+            myAxes.power.Colormap = [0 0 0;1 1 1];
             colorbar(myAxes.power,"eastoutside","Ticks",[0.25 0.75],...
                 'Limits',[0,1],'TickLabels',{'Bad','Good'});
             myAxes.power.YLabel.String = 'Channel #';
@@ -428,8 +444,8 @@ end
             % Combo quality
             imagesc(myAxes.combo,combo_array);
             myAxes.combo.CLim = [0, 1];
-            myAxes.combo.YLim =[1, n_channels];
-            colormap(myAxes.combo,[0 0 0;1 1 1]); 
+            %myAxes.combo.YLim =[1, n_channels];
+            myAxes.combo.Colormap = [0 0 0;1 1 1];
             myAxes.combo.XAxis.TickValues=ticksVals(2:end-1);
             myAxes.combo.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
             colorbar(myAxes.combo,"eastoutside","Ticks",[0.25 0.75],...
@@ -494,7 +510,7 @@ end
         
         if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.n_windows*qMats.sampPerWindow)
             xRect = 0.5; %Because of the offset at the begining of a window
-            yRect = iChannel-0.5;
+            yRect = iChannel+0.5;
             wRect = qMats.n_windows;
             hRect = 1;
             poiMatrgb = zeros(n_channels,xLimWindow(2),3);
