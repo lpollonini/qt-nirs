@@ -1,4 +1,4 @@
-function report_table = nirsplot(rawDotNirs,fcut_,window_,overlap_,q_threshold,cond_mask,lambda_mask_)
+function report_table = nirsplot(dotNirsPath,varargin)% rawDotNirs,fcut_,window_,overlap_,q_threshold,cond_mask,lambda_mask_)
 % raw: raw data in Homer format. Ex: raw = load('nirx_sample.nirs','-mat')
 % fcut: 1x2 array [fmin fmax] representing the bandpass of the cardiac pulsation (default [0.5 2.5])
 % window: length in seconds of the window to partition the signal with (defaut: 5)
@@ -7,31 +7,97 @@ function report_table = nirsplot(rawDotNirs,fcut_,window_,overlap_,q_threshold,c
 % (default: [1 1 ...], the first two encountered, no matter how many there are)
 
 close all
-%global nSources nDetectors nChannels secDur sampDur raw
-%global qMats qltyThld mergewoiFlag SDMeasListAct
 
-report_table = [];
-
-if nargin<5
-    q_threshold = 0.75;
-end
-
-if nargin < 4
-    overlap_ = 0;
-end
-
-if nargin < 3
-    window_ = 5;
-end
-
-if nargin < 2
-    fcut_ = [0.5 2.5];
-end
 
 if nargin < 1
     nirsplotLoadFileGUI;
     return;
 end
+
+if isfile(dotNirsPath)
+    [filepath,name,ext] = fileparts(dotNirsPath);
+    if strcmpi(ext,'.nirs')
+        rawDotNirs = load(dotNirsPath,'-mat');
+    else
+        error('The input file should be a .nirs file format');
+        %We should check that the required variables are in the file
+    end
+else
+    if isfolder(dotNirsPath)
+        disp(['The input data is a folder. ',...
+            'All .nirs files inside ',dotNirsPath,' will be evaluated.'])
+        return;
+    else
+        error('The input path does not exist.');
+    end
+end
+
+propertyArgIn = varargin;
+while length(propertyArgIn) >= 2
+    prop = propertyArgIn{1};
+    val = propertyArgIn{2};
+    propertyArgIn = propertyArgIn(3:end);
+    switch prop            
+        case 'freqCut'
+            if isfloat(val) && lenght(val)==2
+                fcut_ = [min(val) max(val)];
+            end
+            
+        case 'window'
+            if isinteger(val) && length(val)==1
+                window_ = val;
+            end
+            
+        case 'overlap'
+            if isfloat(val) && val >= 0 && val <= 1
+                overlap_ = val;
+            end
+            
+        case 'qualityThreshold'
+            if isfloat(val) && val >= 0 && val <= 1
+                q_threshold = val;
+            end
+            
+        case 'conditionsMask'
+            if (ischar(val) && strcmp(val,'all')) || (isinteger(val) && any(val>1 | val<0)==0)
+                cond_mask = val;
+            end
+            
+        case 'lambdaMask'
+            if (ischar(val) && strcmp(val,'all')) || (isinteger(val) && any(val>1 | val<0)==0)
+                lambda_mask_ = val;                    
+            end
+    end
+end
+
+
+
+if ~exist('rawDotNirs','var')
+    error('The input path does not exist.');
+end
+if ~exist('fcut_','var')
+    fcut_ = [0.5 2.5];
+end
+
+if ~exist('window_','var')
+     window_ = 5;
+end
+if ~exist('overlap_','var')
+     overlap_ = 0;
+end
+if ~exist('q_threshold','var')
+    q_threshold = 0.75;
+end
+if ~exist('cond_mask','var')
+    cond_mask = ones(1,size(rawDotNirs.s,2));
+end
+if ~exist('lambda_mask_','var')
+    lambdas_ = unique(rawDotNirs.SD.MeasList(:,4));
+    lambda_mask_ = ones(length(lambdas_),1);    
+end
+
+
+report_table = [];
 
 % Creating 's' variable (stimuli matrix) from the information in StimDesign
 frequency_samp = 1/mean(diff(rawDotNirs.t));
@@ -156,21 +222,21 @@ end
         
         pos.inspectBtn = [myAxDim.xSep, (myAxDim.height+myAxDim.ySep)*1.025,...
             0.08, myAxDim.ySep*0.7];
-        inspectBtn = uicontrol(main_fig,'Style', 'pushbutton', 'String', 'Inspect',...
+        uicontrol(main_fig,'Style', 'pushbutton', 'String', 'Inspect',...
             'FontSize',14,'FontWeight','bold','Units','normalized','Position', pos.inspectBtn,...
-            'Callback', @inspectActive);
+            'Callback', @inspectActive,'Tag','inspectBtn');
         
         pos.helpBtn = [pos.inspectBtn(1)+pos.inspectBtn(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.05,pos.inspectBtn(4)];
-        helpBtn = uicontrol(main_fig,'Style','pushbutton','String','?',...
+        uicontrol(main_fig,'Style','pushbutton','String','?',...
             'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
-            pos.helpBtn,'Callback', @showHelp);
+            pos.helpBtn,'Callback', @showHelp,'Tag','helpBtn');
         
         pos.chSelBtn = [pos.helpBtn(1)+pos.helpBtn(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.15,pos.inspectBtn(4)];
-        chSelBtn = uicontrol(main_fig,'Style','pushbutton','String','Channel selection',...
+        uicontrol(main_fig,'Style','pushbutton','String','Channel selection',...
             'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
-            pos.chSelBtn,'Callback', @selectGoodChannels);
+            pos.chSelBtn,'Callback', @selectGoodChannels,'Tag','chSelBtn');
         
         % pos.woiSelBtn = [(pos.chSelBtn(1)+pos.chSelBtn(3))*1.15,...
         %     pos.inspectBtn(2),0.15,pos.inspectBtn(4)];
@@ -189,9 +255,9 @@ end
         
         pos.SaveBtn = [pos.AdvView(1)+pos.AdvView(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.1,pos.inspectBtn(4)];
-        SaveBtn = uicontrol(main_fig,'Style','pushbutton','String','Save .nirs',...
+        uicontrol(main_fig,'Style','pushbutton','String','Save .nirs',...
             'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
-            pos.SaveBtn,'Callback', @save2dotnirs);
+            pos.SaveBtn,'Callback', @save2dotnirs, 'Tag','saveBtn','Enable','off');
         
         %main_fig.Visible = 'on';
         
@@ -310,7 +376,7 @@ end
             % Scalp Contact Index
             %cla(myAxes.sci)
             
-                  
+            
             % thresholds a & b
             a = 0.6;
             b = 0.8;
@@ -339,7 +405,7 @@ end
             %                 num2str(a),num2str(b),...
             %                 ['>',num2str(b+(b-a))]},...
             %                 'Limits',[(a-(b-a)) b+(b-a)]);
-
+            
             
             % Power peak
             a = 0.06;
@@ -393,7 +459,7 @@ end
                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
             myAxes.combo.YLabel.String = 'Channel #';
             myAxes.combo.YLabel.FontWeight = 'bold';
-                
+            
             hold(myAxes.sci,'on');
             hold(myAxes.power,'on');
             hold(myAxes.combo,'on');
@@ -408,7 +474,7 @@ end
             % Scalp Contact Index
             sci_threshold = 0.8;
             sci_mask = sci_array>=sci_threshold;
-  
+            
             %cla(myAxes.sci);
             imagesc(myAxes.sci,sci_mask);
             myAxes.sci.CLim = [0,1];
@@ -420,12 +486,12 @@ end
             myAxes.sci.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
             myAxes.sci.Colormap = [0 0 0;1 1 1];
             colorbar(myAxes.sci,'eastoutside',...
-                 'Tag','colorb_sci',...
-                 'Ticks',[0.25 0.75],...
-                 'Limits',[0,1],'TickLabels',{'Bad','Good'});            
+                'Tag','colorb_sci',...
+                'Ticks',[0.25 0.75],...
+                'Limits',[0,1],'TickLabels',{'Bad','Good'});
             myAxes.sci.YLabel.String = 'Channel #';
             myAxes.sci.YLabel.FontWeight = 'bold';
- 
+            
             
             % Power peak
             power_threshold = 0.1;
@@ -627,7 +693,7 @@ end
             interval = (j-1)*window_samples-(j-1)*(overlap_samples)+1 : j*window_samples-(j-1)*(overlap_samples);
             cardiac_windows(:,:,:,j) = cardiac_data(:,interval,:);
         end
-        for j = 1:n_windows
+        parfor j = 1:n_windows
             cardiac_window = cardiac_windows(:,:,:,j);
             sci_array_channels = zeros(1,size(cardiac_window,3));
             power_array_channels = zeros(1,size(cardiac_window,3));
@@ -819,6 +885,8 @@ end
         uiwait(source.Parent);
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
         disp(['Threshold was changed to ',num2str(nirsplot_param.quality_threshold)]);
+        saveBtn = findobj('Tag','saveBtn');
+        saveBtn.Enable = 'on';
         dotNirsOutput = 0;
     end
 
