@@ -38,7 +38,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         nSources    % Number of sources
         nDetectors  % Number of detectors
         nChannels   % Number of channels
-        nCond       % Number of conditions 
+        nCond       % Number of conditions
         sampDur     % Number of data samples
         secDur      % Time in seconds
     end
@@ -51,18 +51,87 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         reportTable % Quality output table report
         quality_threshold % Minimum required quality for channels
         condMask % Binary mask for selecting the conditions of interest
+        dotNirsFilePath % Path of the .nirs file to analyze
     end
     
     
     % Callbacks that handle component events
     methods (Access = private)
         
+        function startupFcn(app, input_param)
+            %unpacking inputs
+            if isfield(input_param,'dotNirsPath')
+                app.dotNirsFilePath = input_param.dotNirsPath;
+                [PathFolder,FileName,ext] = fileparts(app.dotNirsFilePath);
+                cd(PathFolder);
+                app.nirsfileEditField.Value = FileName;       
+            
+            end
+            if isfield(input_param,'n_sources')
+                app.nSources        = input_param.n_sources;
+                app.nSrcLab.Text    = num2str(input_param.n_sources);
+            end
+            if isfield(input_param,'n_detectors')
+                app.nDetectors      = input_param.n_detectors;
+                app.nDetecLab.Text  = num2str(input_param.n_detectors);
+            end
+            if isfield(input_param,'n_channels')
+                app.nChannels       = input_param.n_channels;
+                app.nChanLab.Text   = num2str(input_param.n_channels);
+            end
+            if isfield(input_param,'t')
+                app.secDur          = input_param.t(end);
+                app.secDurLab.Text  = num2str(app.secDur,'%.2f');
+            end    
+            if isfield(input_param,'fcut')
+                app.bpFmin = min(input_param.fcut);
+                app.bpFmax = max(input_param.fcut);
+                app.FreqMinEditField.Value = app.bpFmin;
+                app.FreqMaxEditField.Value = app.bpFmax;
+            end
+            if isfield(input_param,'window')
+                app.windowSec = input_param.window;
+                app.LengthsecSpinner.Value = app.windowSec;
+            end
+            if isfield(input_param,'overlap')
+                app.windowOverlap = input_param.overlap;
+                app.WindowsoverlapSlider.Value = app.windowOverlap*100;
+            end
+            if isfield(input_param,'quality_threshold')
+                app.quality_threshold = input_param.quality_threshold;
+                app.QualityThresholdField.Value = app.quality_threshold;
+            end
+            if isfield(input_param,'cond_mask')
+                % Create and populate StimuliSelectionBoxes
+                xOffset = 16;
+                yOffset = 145;
+                app.nCond = length(input_param.cond_mask);
+                app.condMask = input_param.cond_mask;
+                app.condCheckBoxes.delete;
+                for iCB=1:app.nCond
+                    app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
+                    app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
+                        35, 15];
+                    app.condCheckBoxes(iCB).Value = input_param.cond_mask(iCB);
+                    app.condCheckBoxes(iCB).Text = num2str(iCB);
+                    mod_ = mod(iCB,5);
+                    if mod_ == 0
+                        yOffset = yOffset - 25;
+                        xOffset = 16;
+                    else
+                        xOffset = xOffset+40;
+                    end
+                end
+            end
+        end
+        
         % Button pushed function: LoadButton
         function LoadButtonPushed(app, event)
-            [FileName,PathName,~] = uigetfile('*.nirs','Please select the .nirs file to import');
+            [FileName,PathFolder,~] = uigetfile('*.nirs','Please select the .nirs file to import');
             if ~isequal(FileName,0)
-                cd(PathName);
-                app.rawDotNirs = load([PathName FileName],'-mat');
+                app.dotNirsFilePath = [PathFolder FileName];
+                cd(PathFolder);
+                app.rawDotNirs = load(app.dotNirsFilePath,'-mat');
                 app.nirsfileEditField.Value = FileName;
                 
                 [app.sampDur,app.nChannels] = size(app.rawDotNirs.d);
@@ -92,7 +161,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                         xOffset = 16;
                     else
                         xOffset = xOffset+40;
-                    end                    
+                    end
                 end
                 
             end
@@ -107,14 +176,20 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.quality_threshold = app.QualityThresholdField.Value;
             app.condMask = zeros(1,app.nCond);
             for iCB=1:app.nCond
-                 app.condMask(iCB) = logical(app.condCheckBoxes(iCB).Value);
+                app.condMask(iCB) = logical(app.condCheckBoxes(iCB).Value);
             end
-           
+            
             setappdata(app.NIRSPlotGUIUIFigure,'dotNirs_filename',app.nirsfileEditField.Value);
             
-            app.reportTable = nirsplot(app.rawDotNirs, [app.bpFmin, app.bpFmax],...
-                app.windowSec,app.windowOverlap,app.quality_threshold,...
-                 app.condMask);
+            %app.reportTable = nirsplot(app.rawDotNirs, [app.bpFmin, app.bpFmax],...
+            %    app.windowSec,app.windowOverlap,app.quality_threshold,...
+            %    app.condMask);
+            app.reportTable = nirsplot(app.dotNirsFilePath,...
+                'freqCut',[app.bpFmin, app.bpFmax],...
+                'window',app.windowSec,...
+                'overlap',app.windowOverlap,....
+                'qualityThreshold',app.quality_threshold,...
+                'conditionsMask',app.condMask);
         end
     end
     
@@ -125,7 +200,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         function createComponents(app)
             
             % Create NIRSPlotGUIUIFigure and hide until all components are created
-            app.NIRSPlotGUIUIFigure = uifigure('Visible', 'off');
+            app.NIRSPlotGUIUIFigure = uifigure('Visible', 'off','Tag','nirsplotGUI');
             app.NIRSPlotGUIUIFigure.Position = [100 100 234 655];
             app.NIRSPlotGUIUIFigure.Name = 'NIRSPlot GUI';
             
@@ -280,13 +355,18 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
     methods (Access = public)
         
         % Construct app
-        function app = nirsplotLoadFileGUI
+        function app = nirsplotLoadFileGUI(varargin)
             
             % Create UIFigure and components
             createComponents(app)
             
             % Register the app with App Designer
             registerApp(app, app.NIRSPlotGUIUIFigure)
+            
+            % Execute the startup function
+            if ~isempty(varargin)
+                runStartupFcn(app, @(app)startupFcn(app, varargin{:}))
+            end
             
             if nargout == 0
                 clear app

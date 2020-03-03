@@ -1,4 +1,15 @@
-function report_table = nirsplot(dotNirsPath,varargin)% rawDotNirs,fcut_,window_,overlap_,q_threshold,cond_mask,lambda_mask_)
+function report_table = nirsplot(dotNirsPath,varargin)
+%NIRSPLOT one-line description
+%
+% output = function(inputs) More detailed description which can probably be
+% two-line explanation. 
+%
+%Comprenhensive explanation and input/output variables description
+%explanation
+%explanation 
+%explanation
+%
+% rawDotNirs,fcut_,window_,overlap_,q_threshold,cond_mask,lambda_mask_)
 % raw: raw data in Homer format. Ex: raw = load('nirx_sample.nirs','-mat')
 % fcut: 1x2 array [fmin fmax] representing the bandpass of the cardiac pulsation (default [0.5 2.5])
 % window: length in seconds of the window to partition the signal with (defaut: 5)
@@ -10,7 +21,7 @@ close all
 
 
 if nargin < 1
-    nirsplotLoadFileGUI;
+    nirsplotLoadFileGUI();
     return;
 end
 
@@ -39,13 +50,13 @@ while length(propertyArgIn) >= 2
     propertyArgIn = propertyArgIn(3:end);
     switch prop            
         case 'freqCut'
-            if isfloat(val) && lenght(val)==2
+            if isfloat(val) && length(val)==2
                 fcut_ = [min(val) max(val)];
             end
             
         case 'window'
-            if isinteger(val) && length(val)==1
-                window_ = val;
+            if length(val)==1
+                window_ = ceil(val);
             end
             
         case 'overlap'
@@ -59,12 +70,12 @@ while length(propertyArgIn) >= 2
             end
             
         case 'conditionsMask'
-            if (ischar(val) && strcmp(val,'all')) || (isinteger(val) && any(val>1 | val<0)==0)
+            if (ischar(val) && strcmp(val,'all')) || ~(any(val>1 | val<0))
                 cond_mask = val;
             end
             
         case 'lambdaMask'
-            if (ischar(val) && strcmp(val,'all')) || (isinteger(val) && any(val>1 | val<0)==0)
+            if (ischar(val) && strcmp(val,'all')) || ~(any(val>1 | val<0))
                 lambda_mask_ = val;                    
             end
     end
@@ -96,11 +107,35 @@ if ~exist('lambda_mask_','var')
     lambda_mask_ = ones(length(lambdas_),1);    
 end
 
+nirsplot_parameters.dotNirsPath = dotNirsPath;
+nirsplot_parameters.fcut = fcut_;
+nirsplot_parameters.window = window_;
+nirsplot_parameters.overlap = overlap_;
+nirsplot_parameters.lambda_mask = lambda_mask_;
+nirsplot_parameters.lambdas = lambdas_;
+nirsplot_parameters.mergewoi_flag = true;
+nirsplot_parameters.quality_threshold = q_threshold;
+nirsplot_parameters.n_channels = size(rawDotNirs.d,2)/2;
+nirsplot_parameters.n_sources = size(rawDotNirs.SD.SrcPos,1);
+nirsplot_parameters.n_detectors = size(rawDotNirs.SD.DetPos,1);
+nirsplot_parameters.s = rawDotNirs.s;
+nirsplot_parameters.t = rawDotNirs.t;
+frequency_samp = 1/mean(diff(rawDotNirs.t));
+nirsplot_parameters.fs = frequency_samp;
+nirsplot_parameters.mergewoiFlag = true;
+nirsplot_parameters.cond_mask = cond_mask;
+nirsplot_parameters.save_report_table = false;
+nirsplot_parameters.sclAlpha = 0.98;
 
+% Call the GUI for parameter inputs
+S=dbstack;
+if length(S)== 1
+    nirsplotLoadFileGUI(nirsplot_parameters)
+end
 report_table = [];
 
 % Creating 's' variable (stimuli matrix) from the information in StimDesign
-frequency_samp = 1/mean(diff(rawDotNirs.t));
+
 if ~isfield(rawDotNirs,'s')
     if isfield(rawDotNirs,'StimDesign')
         nStim = length(rawDotNirs.StimDesign);
@@ -116,37 +151,21 @@ if ~isfield(rawDotNirs,'s')
 end
 
 lambdas_ = unique(rawDotNirs.SD.MeasList(:,4));
-if nargin < 7
-    lambda_mask_ = zeros(length(lambdas_),1);
-    lambda_mask_(1)=1;
-    lambda_mask_(2)=1;
-end
-
-if nargin<6
-    cond_mask = ones(1,size(rawDotNirs.s,2));
-end
+% if nargin < 7
+%     lambda_mask_ = zeros(length(lambdas_),1);
+%     lambda_mask_(1)=1;
+%     lambda_mask_(2)=1;
+% end
+% 
+% if nargin<6
+%     cond_mask = ones(1,size(rawDotNirs.s,2));
+% end
 
 % Create GUI
 [main_fig_axes,main_fig] = createGUI();
 
 
-nirsplot_parameters.fcut = fcut_;
-nirsplot_parameters.window = window_;
-nirsplot_parameters.overlap = overlap_;
-nirsplot_parameters.lambda_mask = lambda_mask_;
-nirsplot_parameters.lambdas = lambdas_;
-nirsplot_parameters.mergewoi_flag = true;
-nirsplot_parameters.quality_threshold = q_threshold;
-nirsplot_parameters.n_channels = size(rawDotNirs.d,2)/2;
-nirsplot_parameters.n_sources = size(rawDotNirs.SD.SrcPos,1);
-nirsplot_parameters.n_detectors = size(rawDotNirs.SD.DetPos,1);
-nirsplot_parameters.s = rawDotNirs.s;
-nirsplot_parameters.t = rawDotNirs.t;
-nirsplot_parameters.fs = frequency_samp;
-nirsplot_parameters.mergewoiFlag = true;
-nirsplot_parameters.cond_mask = cond_mask;
-nirsplot_parameters.save_report_table = false;
-nirsplot_parameters.sclAlpha = 0.98;
+
 nirsplot_parameters.main_fig_axes = main_fig_axes;
 setappdata(main_fig,'nirsplot_parameters',nirsplot_parameters);
 setappdata(main_fig,'rawDotNirs',rawDotNirs);
@@ -884,9 +903,11 @@ end
         bpGoodQuality(source.Parent);
         uiwait(source.Parent);
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
-        disp(['Threshold was changed to ',num2str(nirsplot_param.quality_threshold)]);
-        saveBtn = findobj('Tag','saveBtn');
-        saveBtn.Enable = 'on';
+        if isfield(nirsplot_param.quality_matrices,'active_channels')
+            disp(['Threshold was changed to ',num2str(nirsplot_param.quality_threshold)]);
+            saveBtn = findobj('Tag','saveBtn');
+            saveBtn.Enable = 'on';
+        end
         dotNirsOutput = 0;
     end
 
