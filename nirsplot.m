@@ -1,12 +1,12 @@
-function report_table = nirsplot(dotNirsPath,varargin)
+function report_table = nirsplot(dotNirsFilePath,varargin)
 %NIRSPLOT one-line description
 %
 % output = function(inputs) More detailed description which can probably be
-% two-line explanation. 
+% two-line explanation.
 %
 %Comprenhensive explanation and input/output variables description
 %explanation
-%explanation 
+%explanation
 %explanation
 %
 % rawDotNirs,fcut_,window_,overlap_,q_threshold,cond_mask,lambda_mask_)
@@ -25,18 +25,19 @@ if nargin < 1
     return;
 end
 
-if isfile(dotNirsPath)
-    [filepath,name,ext] = fileparts(dotNirsPath);
+if isfile(dotNirsFilePath)
+    [filepath,name,ext] = fileparts(dotNirsFilePath);
     if strcmpi(ext,'.nirs')
-        rawDotNirs = load(dotNirsPath,'-mat');
+        rawDotNirs = load(dotNirsFilePath,'-mat');
     else
         error('The input file should be a .nirs file format');
         %We should check that the required variables are in the file
     end
 else
-    if isfolder(dotNirsPath)
+    if isfolder(dotNirsFilePath)
         disp(['The input data is a folder. ',...
-            'All .nirs files inside ',dotNirsPath,' will be evaluated.'])
+            'All .nirs files inside ',dotNirsFilePath,' will be evaluated.']);
+        nirsplotLoadFileGUI(dotNirsFilePath);
         return;
     else
         error('The input path does not exist.');
@@ -48,7 +49,7 @@ while length(propertyArgIn) >= 2
     prop = propertyArgIn{1};
     val = propertyArgIn{2};
     propertyArgIn = propertyArgIn(3:end);
-    switch prop            
+    switch prop
         case 'freqCut'
             if isfloat(val) && length(val)==2
                 fcut_ = [min(val) max(val)];
@@ -76,25 +77,25 @@ while length(propertyArgIn) >= 2
             
         case 'lambdaMask'
             if (ischar(val) && strcmp(val,'all')) || ~(any(val>1 | val<0))
-                lambda_mask_ = val;                    
+                lambda_mask_ = val;
             end
     end
 end
 
 
 
-if ~exist('rawDotNirs','var')
-    error('The input path does not exist.');
-end
+% if ~exist('rawDotNirs','var')
+%     error('The input path does not exist.');
+% end
 if ~exist('fcut_','var')
     fcut_ = [0.5 2.5];
 end
 
 if ~exist('window_','var')
-     window_ = 5;
+    window_ = 5;
 end
 if ~exist('overlap_','var')
-     overlap_ = 0;
+    overlap_ = 0;
 end
 if ~exist('q_threshold','var')
     q_threshold = 0.75;
@@ -104,10 +105,11 @@ if ~exist('cond_mask','var')
 end
 if ~exist('lambda_mask_','var')
     lambdas_ = unique(rawDotNirs.SD.MeasList(:,4));
-    lambda_mask_ = ones(length(lambdas_),1);    
+    lambda_mask_ = ones(length(lambdas_),1);
 end
 
-nirsplot_parameters.dotNirsPath = dotNirsPath;
+nirsplot_parameters.dotNirsPath = filepath;
+nirsplot_parameters.dotNirsFile = name;
 nirsplot_parameters.fcut = fcut_;
 nirsplot_parameters.window = window_;
 nirsplot_parameters.overlap = overlap_;
@@ -156,7 +158,7 @@ lambdas_ = unique(rawDotNirs.SD.MeasList(:,4));
 %     lambda_mask_(1)=1;
 %     lambda_mask_(2)=1;
 % end
-% 
+%
 % if nargin<6
 %     cond_mask = ones(1,size(rawDotNirs.s,2));
 % end
@@ -938,6 +940,8 @@ end
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
         raw = getappdata(source.Parent,'rawDotNirs');
         active_channels = nirsplot_param.quality_matrices.active_channels;
+        dotNirsFileName = nirsplot_param.dotNirsFile;
+        dotNirsPath = nirsplot_param.dotNirsPath;        
         % saving the indices of good-quality channels
         SD = raw.SD;
         SD.MeasListAct = [active_channels; ones(size(SD.MeasList,1)/2,1)];
@@ -946,7 +950,7 @@ end
         s = raw.s;
         aux = raw.aux;
         tIncMan = ones(length(t),1);
-        save('dotNirs_nirsplot.nirs','SD','t','d','s','aux','tIncMan');
+        save([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],'SD','t','d','s','aux','tIncMan');
         %Notify to the user if the new file was succesfully created
         saving_status = exist('dotNirs_nirsplot.nirs','file');
         if saving_status
@@ -1005,43 +1009,30 @@ end
                 ' Hz to satisfy the Nyquist sampling criterion']);
         end
         [B1,A1]=butter(1,[fcut_min*(2/fs) fcut_max*(2/fs)]);
-        
-%         nirs_data = zeros(length(lambdas),size(raw.d,1),n_channels);
-%         cardiac_data = zeros(length(lambdas),size(raw.d,1),n_channels); % Lambdas x time x channels
-%         for j = 1:length(lambdas)
-%             % Filter everything but the cardiac component
-%             idx = find(raw.SD.MeasList(:,4) == lambdas(j));
-%             nirs_data(j,:,:) = raw.d(:,idx);
-%             filtered_nirs_data=filtfilt(B1,A1,squeeze(nirs_data(j,:,:)));
-%             cardiac_data(j,:,:)=filtered_nirs_data./repmat(std(filtered_nirs_data,0,1),size(filtered_nirs_data,1),1); % Normalized heartbeat
-%         end
-         overlap_samples = floor(window*fs*overlap);
-         window_samples = floor(window*fs);
-         n_windows = floor((size(raw.d,1)-overlap_samples)/(window_samples-overlap_samples));
-%         cardiac_data = cardiac_data(find(lambda_mask),:,:);
-%         sci_array = zeros(size(cardiac_data,3),n_windows);    % Number of optode is from the user's layout, not the machine
-%         power_array = zeros(size(cardiac_data,3),n_windows);
-        %fpower_array = zeros(size(cardiac_data,3),n_windows);
+        overlap_samples = floor(window*fs*overlap);
+        window_samples = floor(window*fs);
+        n_windows = floor((size(raw.d,1)-overlap_samples)/(window_samples-overlap_samples));
+
         cardiac_windows = zeros(length(lambdas),window_samples,n_channels,n_windows);
         nirs_data = zeros(length(lambdas),window_samples,n_channels);
-        cardiac_data = zeros(length(lambdas),window_samples,n_channels);
+        cardiac_data = zeros(length(lambdas),window_samples,n_channels); % #Lambdas x #Windows x #Channels
         for lam = 1:length(lambdas)
             for j = 1:n_windows
-                interval = (j-1)*window_samples-(j-1)*(overlap_samples)+1 : j*window_samples-(j-1)*(overlap_samples);            
-                idx = find(raw.SD.MeasList(:,4) == lambdas(lam));
+                interval = (j-1)*window_samples-(j-1)*(overlap_samples)+1 : j*window_samples-(j-1)*(overlap_samples);
+                idx = raw.SD.MeasList(:,4) == lambdas(lam);
                 nirs_data(lam,:,:) = raw.d(interval,idx);
                 filtered_nirs_data=filtfilt(B1,A1,squeeze(nirs_data(lam,:,:)));
-                cardiac_data(lam,:,:)=filtered_nirs_data./repmat(std(filtered_nirs_data,0,1),size(filtered_nirs_data,1),1); % Normalized heartbeat        
+                cardiac_data(lam,:,:)=filtered_nirs_data./repmat(std(filtered_nirs_data,0,1),size(filtered_nirs_data,1),1); % Normalized heartbeat
                 cardiac_windows(lam,:,:,j) = cardiac_data(lam,:,:);
             end
         end
         overlap_samples = floor(window*fs*overlap);
         window_samples = floor(window*fs);
         n_windows = floor((size(raw.d,1)-overlap_samples)/(window_samples-overlap_samples));
-        cardiac_data = cardiac_data(find(lambda_mask),:,:);
+        cardiac_data = cardiac_data(lambda_mask,:,:);
         sci_array = zeros(size(cardiac_data,3),n_windows);    % Number of optode is from the user's layout, not the machine
         power_array = zeros(size(cardiac_data,3),n_windows);
-        for j = 1:n_windows
+        parfor j = 1:n_windows
             cardiac_window = cardiac_windows(:,:,:,j);
             sci_array_channels = zeros(1,size(cardiac_window,3));
             power_array_channels = zeros(1,size(cardiac_window,3));

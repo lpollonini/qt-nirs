@@ -30,6 +30,8 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         QualityThresholdField   matlab.ui.control.NumericEditField
         condCheckBoxes          matlab.ui.control.CheckBox
         condCheckBLabel         matlab.ui.control.Label
+        treeDotNirs             matlab.ui.container.Tree
+        treeNodesDotNirs        matlab.ui.container.TreeNode
     end
     
     
@@ -51,7 +53,8 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         reportTable % Quality output table report
         quality_threshold % Minimum required quality for channels
         condMask % Binary mask for selecting the conditions of interest
-        dotNirsFilePath % Path of the .nirs file to analyze
+        dotNirsPath % Path of the .nirs file to analyze
+        dotNirsFile % Path of the .nirs file to analyze
     end
     
     
@@ -59,116 +62,151 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
     methods (Access = private)
         
         function startupFcn(app, input_param)
-            %unpacking inputs
-            if isfield(input_param,'dotNirsPath')
-                app.dotNirsFilePath = input_param.dotNirsPath;
-                [PathFolder,FileName,ext] = fileparts(app.dotNirsFilePath);
-                cd(PathFolder);
-                app.nirsfileEditField.Value = FileName;       
-            
-            end
-            if isfield(input_param,'n_sources')
-                app.nSources        = input_param.n_sources;
-                app.nSrcLab.Text    = num2str(input_param.n_sources);
-            end
-            if isfield(input_param,'n_detectors')
-                app.nDetectors      = input_param.n_detectors;
-                app.nDetecLab.Text  = num2str(input_param.n_detectors);
-            end
-            if isfield(input_param,'n_channels')
-                app.nChannels       = input_param.n_channels;
-                app.nChanLab.Text   = num2str(input_param.n_channels);
-            end
-            if isfield(input_param,'t')
-                app.secDur          = input_param.t(end);
-                app.secDurLab.Text  = num2str(app.secDur,'%.2f');
-            end    
-            if isfield(input_param,'fcut')
-                app.bpFmin = min(input_param.fcut);
-                app.bpFmax = max(input_param.fcut);
-                app.FreqMinEditField.Value = app.bpFmin;
-                app.FreqMaxEditField.Value = app.bpFmax;
-            end
-            if isfield(input_param,'window')
-                app.windowSec = input_param.window;
-                app.LengthsecSpinner.Value = app.windowSec;
-            end
-            if isfield(input_param,'overlap')
-                app.windowOverlap = input_param.overlap;
-                app.WindowsoverlapSlider.Value = app.windowOverlap*100;
-            end
-            if isfield(input_param,'quality_threshold')
-                app.quality_threshold = input_param.quality_threshold;
-                app.QualityThresholdField.Value = app.quality_threshold;
-            end
-            if isfield(input_param,'cond_mask')
-                % Create and populate StimuliSelectionBoxes
-                xOffset = 16;
-                yOffset = 145;
-                app.nCond = length(input_param.cond_mask);
-                app.condMask = input_param.cond_mask;
-                app.condCheckBoxes.delete;
-                for iCB=1:app.nCond
-                    app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
-                    app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
-                        35, 15];
-                    app.condCheckBoxes(iCB).Value = input_param.cond_mask(iCB);
-                    app.condCheckBoxes(iCB).Text = num2str(iCB);
-                    mod_ = mod(iCB,5);
-                    if mod_ == 0
-                        yOffset = yOffset - 25;
-                        xOffset = 16;
-                    else
-                        xOffset = xOffset+40;
+            if ischar(input_param)
+                app.dotNirsPath = input_param;
+                 app.dotNirsFile = [];
+                 
+            elseif isstruct(input_param)
+                if isfield(input_param,'dotNirsFile')
+                    app.dotNirsPath = input_param.dotNirsPath;
+                    app.dotNirsFile = [input_param.dotNirsFile '.nirs'];
+
+                    
+                end
+                if isfield(input_param,'n_sources')
+                    app.nSources        = input_param.n_sources;
+                    app.nSrcLab.Text    = num2str(input_param.n_sources);
+                end
+                if isfield(input_param,'n_detectors')
+                    app.nDetectors      = input_param.n_detectors;
+                    app.nDetecLab.Text  = num2str(input_param.n_detectors);
+                end
+                if isfield(input_param,'n_channels')
+                    app.nChannels       = input_param.n_channels;
+                    app.nChanLab.Text   = num2str(input_param.n_channels);
+                end
+                if isfield(input_param,'t')
+                    app.secDur          = input_param.t(end);
+                    app.secDurLab.Text  = num2str(app.secDur,'%.2f');
+                end
+                if isfield(input_param,'fcut')
+                    app.bpFmin = min(input_param.fcut);
+                    app.bpFmax = max(input_param.fcut);
+                    app.FreqMinEditField.Value = app.bpFmin;
+                    app.FreqMaxEditField.Value = app.bpFmax;
+                end
+                if isfield(input_param,'window')
+                    app.windowSec = input_param.window;
+                    app.LengthsecSpinner.Value = app.windowSec;
+                end
+                if isfield(input_param,'overlap')
+                    app.windowOverlap = input_param.overlap;
+                    app.WindowsoverlapSlider.Value = app.windowOverlap*100;
+                end
+                if isfield(input_param,'quality_threshold')
+                    app.quality_threshold = input_param.quality_threshold;
+                    app.QualityThresholdField.Value = app.quality_threshold;
+                end
+                if isfield(input_param,'cond_mask')
+                    % Create and fill StimuliSelectionBoxes
+                    xOffset = 16;
+                    yOffset = 145;
+                    app.nCond = length(input_param.cond_mask);
+                    app.condMask = input_param.cond_mask;
+                    app.condCheckBoxes.delete;
+                    for iCB=1:app.nCond
+                        app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
+                        app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
+                            35, 15];
+                        app.condCheckBoxes(iCB).Value = input_param.cond_mask(iCB);
+                        app.condCheckBoxes(iCB).Text = num2str(iCB);
+                        mod_ = mod(iCB,5);
+                        if mod_ == 0
+                            yOffset = yOffset - 25;
+                            xOffset = 16;
+                        else
+                            xOffset = xOffset+40;
+                        end
                     end
+                end
+            end
+            LoadDotNirsDir(app, app.dotNirsPath);
+        end
+        
+        % Tree selectionChanged function: treeDotNirs
+        function treeSelection(app, event)
+            dotNirsFileSel = event.SelectedNodes.Text;
+            app.dotNirsFile = dotNirsFileSel;
+            disp(['Loading: ',app.dotNirsPath,filesep,dotNirsFileSel]);
+            app.rawDotNirs = load([app.dotNirsPath,filesep,app.dotNirsFile],'-mat');            
+            
+            [app.sampDur,app.nChannels] = size(app.rawDotNirs.d);
+            app.nChannels = app.nChannels/2;
+            app.nSources        = size(app.rawDotNirs.SD.SrcPos,1);
+            app.nDetectors      = size(app.rawDotNirs.SD.DetPos,1);
+            app.secDur          = app.rawDotNirs.t(end);
+            app.nSrcLab.Text    = num2str(app.nSources);
+            app.nDetecLab.Text  = num2str(app.nDetectors);
+            app.nChanLab.Text   = num2str(app.nChannels);
+            app.secDurLab.Text  = num2str(app.secDur,'%.2f');
+            
+            % Create StimuliSelectionBoxes
+            xOffset = 16;
+            yOffset = 145;
+            app.nCond = size(app.rawDotNirs.s,2);
+            app.condCheckBoxes.delete;
+            for iCB=1:app.nCond
+                app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
+                app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
+                    35, 15];
+                app.condCheckBoxes(iCB).Value = 1;
+                app.condCheckBoxes(iCB).Text = num2str(iCB);
+                mod_ = mod(iCB,5);
+                if mod_ == 0
+                    yOffset = yOffset - 25;
+                    xOffset = 16;
+                else
+                    xOffset = xOffset+40;
                 end
             end
         end
         
         % Button pushed function: LoadButton
-        function LoadButtonPushed(app, event)
-            [FileName,PathFolder,~] = uigetfile('*.nirs','Please select the .nirs file to import');
-            if ~isequal(FileName,0)
-                app.dotNirsFilePath = [PathFolder FileName];
-                cd(PathFolder);
-                app.rawDotNirs = load(app.dotNirsFilePath,'-mat');
-                app.nirsfileEditField.Value = FileName;
-                
-                [app.sampDur,app.nChannels] = size(app.rawDotNirs.d);
-                app.nChannels = app.nChannels/2;
-                app.nSources        = size(app.rawDotNirs.SD.SrcPos,1);
-                app.nDetectors      = size(app.rawDotNirs.SD.DetPos,1);
-                app.secDur          = app.rawDotNirs.t(end);
-                app.nSrcLab.Text    = num2str(app.nSources);
-                app.nDetecLab.Text  = num2str(app.nDetectors);
-                app.nChanLab.Text   = num2str(app.nChannels);
-                app.secDurLab.Text  = num2str(app.secDur,'%.2f');
-                
-                % Create StimuliSelectionBoxes
-                xOffset = 16;
-                yOffset = 145;
-                app.nCond = size(app.rawDotNirs.s,2);
-                app.condCheckBoxes.delete;
-                for iCB=1:app.nCond
-                    app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
-                    app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
-                        35, 15];
-                    app.condCheckBoxes(iCB).Value = 1;
-                    app.condCheckBoxes(iCB).Text = num2str(iCB);
-                    mod_ = mod(iCB,5);
-                    if mod_ == 0
-                        yOffset = yOffset - 25;
-                        xOffset = 16;
-                    else
-                        xOffset = xOffset+40;
-                    end
-                end
-                
-            end
+        function LoadDotNirsDirPushed(app, event)
+            app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nir files folder');
+            LoadDotNirsDir(app, app.dotNirsPath);
         end
         
+        % Button pushed function: LoadButton
+        function LoadDotNirsDir(app, dotNirsPath)
+            app.dotNirsPath = dotNirsPath;
+            %Search for .nirs files in the folder
+            dotNirsFound = dir([app.dotNirsPath,filesep,'*.nirs']);
+            folder = split(dotNirsFound(1,1).folder,filesep);
+            folder = folder{end};
+            % Add nodes to the tree with those .nirs files found
+            if ~isempty(dotNirsFound)
+                app.treeDotNirs.Children(1).Children.delete;
+                app.treeDotNirs.Children(1).Text = folder;
+                
+                for i=1:length(dotNirsFound)
+                    tn = uitreenode(app.treeDotNirs.Children(1),'Text',dotNirsFound(i).name);
+                    if strcmp(app.dotNirsFile,dotNirsFound(i).name)==1
+                        app.treeDotNirs.SelectedNodes = tn;
+                    end
+                end
+                expand(app.treeDotNirs);
+            else
+                opts = struct('WindowStyle','modal',...
+                    'Interpreter','none');
+                errordlg('.nirs files not found','Invalid dir',opts);
+            end
+            
+        end
+        
+        
         % Callback function
-        function PlotButtonPushed2(app, event)
+        function PlotButtonIndiv(app, event)
             app.bpFmin = app.FreqMinEditField.Value;
             app.bpFmax = app.FreqMaxEditField.Value;
             app.windowSec = app.LengthsecSpinner.Value;
@@ -179,12 +217,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                 app.condMask(iCB) = logical(app.condCheckBoxes(iCB).Value);
             end
             
-            setappdata(app.NIRSPlotGUIUIFigure,'dotNirs_filename',app.nirsfileEditField.Value);
-            
-            %app.reportTable = nirsplot(app.rawDotNirs, [app.bpFmin, app.bpFmax],...
-            %    app.windowSec,app.windowOverlap,app.quality_threshold,...
-            %    app.condMask);
-            app.reportTable = nirsplot(app.dotNirsFilePath,...
+            app.reportTable = nirsplot([app.dotNirsPath,filesep,app.dotNirsFile],...
                 'freqCut',[app.bpFmin, app.bpFmax],...
                 'window',app.windowSec,...
                 'overlap',app.windowOverlap,....
@@ -198,37 +231,47 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         
         % Create UIFigure and components
         function createComponents(app)
+            w.height = 700;
+            w.width = 234;
+            w.x = 50;
+            w.y = 50;
             
+            uicomp = zeros(0,4);
             % Create NIRSPlotGUIUIFigure and hide until all components are created
             app.NIRSPlotGUIUIFigure = uifigure('Visible', 'off','Tag','nirsplotGUI');
-            app.NIRSPlotGUIUIFigure.Position = [100 100 234 655];
+            app.NIRSPlotGUIUIFigure.Position = [w.x w.y w.width w.height];
             app.NIRSPlotGUIUIFigure.Name = 'NIRSPlot GUI';
             
             % Create NIRSPlotLabel
+            uicomp(1,:) = [80 w.height-25 83 22];
             app.NIRSPlotLabel = uilabel(app.NIRSPlotGUIUIFigure);
             app.NIRSPlotLabel.FontSize = 18;
             app.NIRSPlotLabel.FontWeight = 'bold';
             app.NIRSPlotLabel.FontAngle = 'italic';
             app.NIRSPlotLabel.FontColor = [0 0 1];
-            app.NIRSPlotLabel.Position = [85 598 83 22];
+            app.NIRSPlotLabel.Position = uicomp(1,:);
+            app.NIRSPlotLabel.HorizontalAlignment = 'center';
             app.NIRSPlotLabel.Text = 'NIRSPlot';
             
-            
             % Create nirsfileEditFieldLabel
+            uicomp(2,:) = [24 530 50 uicomp(1,4)];
             app.nirsfileEditFieldLabel = uilabel(app.NIRSPlotGUIUIFigure);
             app.nirsfileEditFieldLabel.HorizontalAlignment = 'right';
-            app.nirsfileEditFieldLabel.Position = [24 545 47 22];
-            app.nirsfileEditFieldLabel.Text = '.nirs file';
+            app.nirsfileEditFieldLabel.Position = uicomp(2,:);
+            app.nirsfileEditFieldLabel.Text = '.nirs files';
             
-            % Create nirsfileEditField
-            app.nirsfileEditField = uieditfield(app.NIRSPlotGUIUIFigure, 'text');
-            app.nirsfileEditField.Position = [91 545 100 22];
+            % Create tree
+            uicomp(2,:) = [24 550 200 120];
+            app.treeDotNirs = uitree(app.NIRSPlotGUIUIFigure);
+            app.treeDotNirs.Position = uicomp(2,:);
+            app.treeDotNirs.SelectionChangedFcn = createCallbackFcn(app,@treeSelection,true);
+            uitreenode(app.treeDotNirs,'Text','.nirs files');           
             
             % Create LoadButton
-            app.LoadButton = uibutton(app.NIRSPlotGUIUIFigure, 'push');
-            app.LoadButton.ButtonPushedFcn = createCallbackFcn(app, @LoadButtonPushed, true);
+            app.LoadButton = uibutton(app.NIRSPlotGUIUIFigure, 'push');            
+            app.LoadButton.ButtonPushedFcn = createCallbackFcn(app,@LoadDotNirsDirPushed,true);
             app.LoadButton.Position = [120 515 79 22];
-            app.LoadButton.Text = 'Load';
+            app.LoadButton.Text = 'Sel. Folder';
             
             % Create SourcesLabel
             app.SourcesLabel = uilabel(app.NIRSPlotGUIUIFigure);
@@ -342,9 +385,9 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             
             % Create PlotButton
             app.PlotButton = uibutton(app.NIRSPlotGUIUIFigure, 'push');
-            app.PlotButton.ButtonPushedFcn = createCallbackFcn(app, @PlotButtonPushed2, true);
+            app.PlotButton.ButtonPushedFcn = createCallbackFcn(app, @PlotButtonIndiv, true);
             app.PlotButton.Position = [120 35 70 22];
-            app.PlotButton.Text = 'Plot';
+            app.PlotButton.Text = 'Plot indiv.';
             
             % Show the figure after all components are created
             app.NIRSPlotGUIUIFigure.Visible = 'on';
@@ -362,7 +405,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             
             % Register the app with App Designer
             registerApp(app, app.NIRSPlotGUIUIFigure)
-            
+            app.dotNirsPath = pwd;
             % Execute the startup function
             if ~isempty(varargin)
                 runStartupFcn(app, @(app)startupFcn(app, varargin{:}))
