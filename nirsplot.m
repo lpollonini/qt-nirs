@@ -174,6 +174,7 @@ setappdata(main_fig,'rawDotNirs',rawDotNirs);
 %[quality_matrices] = qualityCompute(raw,fcut,window,overlap,lambda_mask,lambdas,mergewoi_flag);
 [quality_matrices] = qualityCompute(main_fig);
 nirsplot_parameters.quality_matrices = quality_matrices;
+%save('QCmetrics_normal.mat','quality_matrices');
 setappdata(main_fig,'nirsplot_parameters',nirsplot_parameters);
 
 main_fig.Visible = 'on';
@@ -978,5 +979,153 @@ end
     function sciThreshold(source, event)
         event.IntersectionPoint
         
+    end
+
+
+%% -------------------------------------------------------------------------
+    function [qualityMats] = qualityCompute2(main_fig)
+        raw = getappdata(main_fig,'rawDotNirs');
+        nirsplot_param = getappdata(main_fig,'nirsplot_parameters');
+        fcut = nirsplot_param.fcut;
+        window = nirsplot_param.window;
+        overlap = nirsplot_param.overlap;
+        lambda_mask = nirsplot_param.lambda_mask;
+        lambdas = nirsplot_param.lambdas;
+        n_channels = nirsplot_param.n_channels;
+        qltyThld = nirsplot_param.quality_threshold;
+        % Set the bandpass filter parameters
+        %fs = 1/mean(diff(raw.t));
+        fs = nirsplot_param.fs;
+        fcut_min = fcut(1);
+        fcut_max = fcut(2);
+        if fcut_max >= (fs)/2
+            fcut_max = (fs)/2 - eps;
+            warning(['The highpass cutoff has been reduced from ',...
+                num2str(fcut(2)), ' Hz to ', num2str(fcut_max),...
+                ' Hz to satisfy the Nyquist sampling criterion']);
+        end
+        [B1,A1]=butter(1,[fcut_min*(2/fs) fcut_max*(2/fs)]);
+        
+%         nirs_data = zeros(length(lambdas),size(raw.d,1),n_channels);
+%         cardiac_data = zeros(length(lambdas),size(raw.d,1),n_channels); % Lambdas x time x channels
+%         for j = 1:length(lambdas)
+%             % Filter everything but the cardiac component
+%             idx = find(raw.SD.MeasList(:,4) == lambdas(j));
+%             nirs_data(j,:,:) = raw.d(:,idx);
+%             filtered_nirs_data=filtfilt(B1,A1,squeeze(nirs_data(j,:,:)));
+%             cardiac_data(j,:,:)=filtered_nirs_data./repmat(std(filtered_nirs_data,0,1),size(filtered_nirs_data,1),1); % Normalized heartbeat
+%         end
+         overlap_samples = floor(window*fs*overlap);
+         window_samples = floor(window*fs);
+         n_windows = floor((size(raw.d,1)-overlap_samples)/(window_samples-overlap_samples));
+%         cardiac_data = cardiac_data(find(lambda_mask),:,:);
+%         sci_array = zeros(size(cardiac_data,3),n_windows);    % Number of optode is from the user's layout, not the machine
+%         power_array = zeros(size(cardiac_data,3),n_windows);
+        %fpower_array = zeros(size(cardiac_data,3),n_windows);
+        cardiac_windows = zeros(length(lambdas),window_samples,n_channels,n_windows);
+        nirs_data = zeros(length(lambdas),window_samples,n_channels);
+        cardiac_data = zeros(length(lambdas),window_samples,n_channels);
+        for lam = 1:length(lambdas)
+            for j = 1:n_windows
+                interval = (j-1)*window_samples-(j-1)*(overlap_samples)+1 : j*window_samples-(j-1)*(overlap_samples);            
+                idx = find(raw.SD.MeasList(:,4) == lambdas(lam));
+                nirs_data(lam,:,:) = raw.d(interval,idx);
+                filtered_nirs_data=filtfilt(B1,A1,squeeze(nirs_data(lam,:,:)));
+                cardiac_data(lam,:,:)=filtered_nirs_data./repmat(std(filtered_nirs_data,0,1),size(filtered_nirs_data,1),1); % Normalized heartbeat        
+                cardiac_windows(lam,:,:,j) = cardiac_data(lam,:,:);
+            end
+        end
+        overlap_samples = floor(window*fs*overlap);
+        window_samples = floor(window*fs);
+        n_windows = floor((size(raw.d,1)-overlap_samples)/(window_samples-overlap_samples));
+        cardiac_data = cardiac_data(find(lambda_mask),:,:);
+        sci_array = zeros(size(cardiac_data,3),n_windows);    % Number of optode is from the user's layout, not the machine
+        power_array = zeros(size(cardiac_data,3),n_windows);
+        for j = 1:n_windows
+            cardiac_window = cardiac_windows(:,:,:,j);
+            sci_array_channels = zeros(1,size(cardiac_window,3));
+            power_array_channels = zeros(1,size(cardiac_window,3));
+            fpower_array_channels = zeros(1,size(cardiac_window,3));
+            for k = 1:size(cardiac_window,3) % Channels iteration
+                %cross-correlate the two wavelength signals - both should have cardiac pulsations
+                similarity = xcorr(squeeze(cardiac_window(1,:,k)),squeeze(cardiac_window(2,:,k)),'unbiased');
+                if any(abs(similarity)>eps)
+                    % this makes the SCI=1 at lag zero when x1=x2 AND makes the power estimate independent of signal length, amplitude and Fs
+                    similarity = length(squeeze(cardiac_window(1,:,k)))*similarity./sqrt(sum(abs(squeeze(cardiac_window(1,:,k))).^2)*sum(abs(squeeze(cardiac_window(2,:,k))).^2));
+                else
+                    warning('Similarity results close to zero');
+                end
+                [pxx,f] = periodogram(similarity,hamming(length(similarity)),length(similarity),fs,'power');
+                [pwrest,idx] = max(pxx(f<fcut_max)); % FIX Make it age-dependent
+                sci=similarity(length(squeeze(cardiac_window(1,:,k))));
+                power=pwrest;
+                fpower=f(idx);
+                sci_array_channels(k) = sci;
+                power_array_channels(k) = power;
+                fpower_array_channels(k) = fpower;
+            end
+            sci_array(:,j) = sci_array_channels;    % Adjust not based on machine
+            power_array(:,j) = power_array_channels;
+            %    fpower_array(:,j) = fpower_array_channels;
+        end
+        
+        % Summary analysis
+        [woi] = getWOI(window_samples,n_windows,nirsplot_param);
+        idxPoi = logical(woi.mat(1,:));
+        
+        mean_sci_link  = mean(sci_array(:,idxPoi),2);
+        std_sci_link  = std(sci_array(:,idxPoi),0,2);
+        good_sci_link = sum(sci_array(:,idxPoi)>=0.8,2)/size(sci_array(:,idxPoi),2);
+        mean_sci_window  = mean(sci_array(:,idxPoi),1);
+        std_sci_window  = std(sci_array(:,idxPoi),0,1);
+        good_sci_window = sum(sci_array(:,idxPoi)>=0.8,1)/size(sci_array(:,idxPoi),1);
+        
+        mean_power_link  = mean(power_array(:,idxPoi),2);
+        std_power_link  = std(power_array(:,idxPoi),0,2);
+        good_power_link = sum(power_array(:,idxPoi)>=0.1,2)/size(power_array(:,idxPoi),2);
+        mean_power_window  = mean(power_array(:,idxPoi),1);
+        std_power_window  = std(power_array(:,idxPoi),0,1);
+        good_power_window = sum(power_array(:,idxPoi)>=0.1,1)/size(power_array(:,idxPoi),1);
+        
+        combo_array = (sci_array >= 0.8) & (power_array >= 0.10);
+        combo_array_expanded = 2*(sci_array >= 0.8) + (power_array >= 0.10);
+        
+        mean_combo_link  = mean(combo_array,2);
+        std_combo_link  = std(combo_array,0,2);
+        
+        good_combo_link  = mean(combo_array(:,idxPoi),2);
+        mean_combo_window  = mean(combo_array,1);
+        std_combo_window  = std(combo_array,0,1);
+        
+        idx_gcl = good_combo_link>=qltyThld;
+        good_combo_window = mean(combo_array(idx_gcl,:),1);
+        
+        % Detecting experimental blocks
+        exp_blocks = zeros(1,length(woi.start));
+        for iblock = 1:length(woi.start)
+            block_start_w = woi.start(iblock);
+            block_end_w = woi.end(iblock);
+            exp_blocks(iblock) = mean(good_combo_window(block_start_w:block_end_w));
+        end
+        
+        % Detect artifacts and bad links
+        bad_links = find(mean_combo_link<qltyThld);
+        bad_windows = find(mean_combo_window<qltyThld);
+        
+        % Packaging sci, peakpower and combo
+        qualityMats.sci_array    = sci_array;
+        qualityMats.power_array  = power_array;
+        qualityMats.combo_array  = combo_array;
+        qualityMats.combo_array_expanded = combo_array_expanded;
+        qualityMats.bad_links    = bad_links;
+        qualityMats.bad_windows  = bad_windows;
+        qualityMats.sampPerWindow = window_samples;
+        qualityMats.fs = fs;
+        qualityMats.n_windows = n_windows;
+        qualityMats.cardiac_data = cardiac_data;
+        qualityMats.good_combo_link = good_combo_link;
+        qualityMats.good_combo_window = good_combo_window;
+        qualityMats.woi = woi;
+        %
     end
 end %end of nirsplot function definition
