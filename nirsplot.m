@@ -1,4 +1,4 @@
-function report_table = nirsplot(dotNirsFilePath,varargin)
+function quality_matrices = nirsplot(dotNirsFilePath,varargin)
 %NIRSPLOT one-line description
 %
 % output = function(inputs) More detailed description which can probably be
@@ -17,7 +17,7 @@ function report_table = nirsplot(dotNirsFilePath,varargin)
 % lambda_mask: binary array mapping the selected two wavelength to correlate
 % (default: [1 1 ...], the first two encountered, no matter how many there are)
 
-close all
+%close all
 
 
 if nargin < 1
@@ -79,14 +79,58 @@ while length(propertyArgIn) >= 2
             if (ischar(val) && strcmp(val,'all')) || ~(any(val>1 | val<0))
                 lambda_mask_ = val;
             end
+            
+        case 'dodFlag'
+            if val == 1
+                dodFlag_ = 1; 
+            else
+                dodFlag_ = 0;
+            end
+        case 'guiFlag'
+            if val == 1
+                guiFlag_ = 1;
+            else
+                guiFlag_ = 0;
+            end
+    end
+end
+
+%------ Sorting for nirstoolbox compatibility ------
+varNames = {'source','detector','dummy','type'};
+MeasList_table = table(rawDotNirs.SD.MeasList(:,1),...
+    rawDotNirs.SD.MeasList(:,2),...
+    rawDotNirs.SD.MeasList(:,3),...
+    rawDotNirs.SD.MeasList(:,4),...
+    'VariableNames',varNames);
+
+colsToSortBy = {'source', 'detector', 'type'};
+[MeasList_table, idxML] = sortrows(MeasList_table, colsToSortBy);
+rawDotNirs.SD.MeasList = table2array(MeasList_table);
+rawDotNirs.d = rawDotNirs.d(:,idxML);
+%---------------------------------------------------
+
+frequency_samp = 1/mean(diff(rawDotNirs.t));
+% Creating 's' variable (stimuli matrix) from the information in StimDesign
+if ~isfield(rawDotNirs,'s')
+    if isfield(rawDotNirs,'StimDesign')
+        nStim = length(rawDotNirs.StimDesign);
+        sTmp = zeros(size(rawDotNirs.d,1),nStim);
+        for iStim = 1:nStim
+            for iOnset=1:length(rawDotNirs.StimDesign(iStim).onset)
+                onsetTmp = floor(rawDotNirs.StimDesign(iStim).onset(iOnset) * frequency_samp);
+                durTmp = floor(rawDotNirs.StimDesign(iStim).dur(iOnset)* frequency_samp);
+                %sTmp(floor(rawDotNirs.StimDesign(iStim).onset(iOnset) * frequency_samp),iStim) = 1;
+                sTmp(onsetTmp:(onsetTmp+durTmp),iStim) = 1;
+            end
+        end
+        rawDotNirs.s = sTmp;
+        clear sTmp;
+    else
+        error('Stimuli information is not available.');
     end
 end
 
 
-
-% if ~exist('rawDotNirs','var')
-%     error('The input path does not exist.');
-% end
 if ~exist('fcut_','var')
     fcut_ = [0.5 2.5];
 end
@@ -100,13 +144,20 @@ end
 if ~exist('q_threshold','var')
     q_threshold = 0.75;
 end
-if ~exist('cond_mask','var')
+if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
     cond_mask = ones(1,size(rawDotNirs.s,2));
 end
 if ~exist('lambda_mask_','var')
     lambdas_ = unique(rawDotNirs.SD.MeasList(:,4));
     lambda_mask_ = ones(length(lambdas_),1);
 end
+if ~exist('dodFlag_','var')
+    dodFlag_ = 0;
+end
+if ~exist('guiFlag_','var')
+    guiFlag_ = 0;
+end
+
 
 nirsplot_parameters.dotNirsPath = filepath;
 nirsplot_parameters.dotNirsFile = name;
@@ -115,6 +166,7 @@ nirsplot_parameters.window = window_;
 nirsplot_parameters.overlap = overlap_;
 nirsplot_parameters.lambda_mask = lambda_mask_;
 nirsplot_parameters.lambdas = lambdas_;
+nirsplot_parameters.dodFlag = dodFlag_;
 nirsplot_parameters.mergewoi_flag = true;
 nirsplot_parameters.quality_threshold = q_threshold;
 nirsplot_parameters.n_channels = size(rawDotNirs.d,2)/2;
@@ -122,66 +174,46 @@ nirsplot_parameters.n_sources = size(rawDotNirs.SD.SrcPos,1);
 nirsplot_parameters.n_detectors = size(rawDotNirs.SD.DetPos,1);
 nirsplot_parameters.s = rawDotNirs.s;
 nirsplot_parameters.t = rawDotNirs.t;
-frequency_samp = 1/mean(diff(rawDotNirs.t));
+
+
 nirsplot_parameters.fs = frequency_samp;
 nirsplot_parameters.mergewoiFlag = true;
 nirsplot_parameters.cond_mask = cond_mask;
 nirsplot_parameters.save_report_table = false;
-nirsplot_parameters.sclAlpha = 0.98;
+nirsplot_parameters.sclAlpha = 0.65;
+nirsplot_parameters.rectangle_line_width = 1.2;
+nirsplot_parameters.guiFlag = guiFlag_;
 
 % Call the GUI for parameter inputs
 S=dbstack;
-if length(S)== 1
+if length(S)== 1 && guiFlag_ == 1
     nirsplotLoadFileGUI(nirsplot_parameters)
 end
 report_table = [];
 
-% Creating 's' variable (stimuli matrix) from the information in StimDesign
-
-if ~isfield(rawDotNirs,'s')
-    if isfield(rawDotNirs,'StimDesign')
-        nStim = length(rawDotNirs.StimDesign);
-        sTmp = zeros(size(rawDotNirs.d,1),nStim);
-        for iStim = 1:nStim
-            sTmp(floor(rawDotNirs.StimDesign(iStim).onset * frequency_samp),iStim) = 1;
-        end
-        rawDotNirs.s = sTmp;
-        clear sTmp;
-    else
-        error('Stimuli information is not available.');
-    end
-end
-
-lambdas_ = unique(rawDotNirs.SD.MeasList(:,4));
-% if nargin < 7
-%     lambda_mask_ = zeros(length(lambdas_),1);
-%     lambda_mask_(1)=1;
-%     lambda_mask_(2)=1;
-% end
-%
-% if nargin<6
-%     cond_mask = ones(1,size(rawDotNirs.s,2));
-% end
 
 % Create GUI
 [main_fig_axes,main_fig] = createGUI();
-
-
 
 nirsplot_parameters.main_fig_axes = main_fig_axes;
 setappdata(main_fig,'nirsplot_parameters',nirsplot_parameters);
 setappdata(main_fig,'rawDotNirs',rawDotNirs);
 
 % Computation
-%[quality_matrices] = qualityCompute(raw,fcut,window,overlap,lambda_mask,lambdas,mergewoi_flag);
 [quality_matrices] = qualityCompute(main_fig);
 nirsplot_parameters.quality_matrices = quality_matrices;
-%save('QCmetrics_normal.mat','quality_matrices');
+
 setappdata(main_fig,'nirsplot_parameters',nirsplot_parameters);
 
-main_fig.Visible = 'on';
-detViewCheckb = findobj('Tag','detViewCheckb');
-updateQPlots(detViewCheckb,[]);
+if guiFlag_ == 1
+    main_fig.Visible = 'on';
+    detViewCheckb = findobj('Tag','detViewCheckb');
+    updateQPlots(detViewCheckb,[]);
+    %rawNT = nirs.io.loadDotNirs(dotNirsFilePath,true);
+    %rawNT.draw(1:(nirsplot_parameters.n_channels * 2),[],main_fig_axes.inspector);
+else
+    close(main_fig);
+end
 
 if nirsplot_parameters.save_report_table == true
     report_table = saveQuality(quality_matrices);
@@ -202,7 +234,7 @@ end
         % SCI
         myAxDim.width = 0.9;
         myAxDim.height = (1/4)*0.75; % Four axes over the 80% of the figure
-        myAxDim.xSep = 0.03;
+        myAxDim.xSep = 0.04;
         myAxDim.ySep = (1 - myAxDim.height*4) / 5;
         
         pos.inspAx = [myAxDim.xSep,myAxDim.ySep+(0*(myAxDim.height+myAxDim.ySep)),...
@@ -245,19 +277,19 @@ end
         pos.inspectBtn = [myAxDim.xSep, (myAxDim.height+myAxDim.ySep)*1.025,...
             0.08, myAxDim.ySep*0.7];
         uicontrol(main_fig,'Style', 'pushbutton', 'String', 'Inspect',...
-            'FontSize',14,'FontWeight','bold','Units','normalized','Position', pos.inspectBtn,...
+            'FontSize',12,'FontWeight','bold','Units','normalized','Position', pos.inspectBtn,...
             'Callback', @inspectActive,'Tag','inspectBtn');
         
         pos.helpBtn = [pos.inspectBtn(1)+pos.inspectBtn(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.05,pos.inspectBtn(4)];
         uicontrol(main_fig,'Style','pushbutton','String','?',...
-            'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
+            'FontSize',12,'FontWeight','bold','Units','normalized','Position',...
             pos.helpBtn,'Callback', @showHelp,'Tag','helpBtn');
         
         pos.chSelBtn = [pos.helpBtn(1)+pos.helpBtn(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.15,pos.inspectBtn(4)];
         uicontrol(main_fig,'Style','pushbutton','String','Channel selection',...
-            'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
+            'FontSize',12,'FontWeight','bold','Units','normalized','Position',...
             pos.chSelBtn,'Callback', @selectGoodChannels,'Tag','chSelBtn');
         
         % pos.woiSelBtn = [(pos.chSelBtn(1)+pos.chSelBtn(3))*1.15,...
@@ -271,14 +303,14 @@ end
             pos.inspectBtn(2),...
             0.1,...
             pos.inspectBtn(4)];
-        uicontrol(main_fig,'Style','checkbox','String','Advanced view',...
-            'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
+        uicontrol(main_fig,'Style','checkbox','String','Advanced',...
+            'FontSize',12,'FontWeight','bold','Units','normalized','Position',...
             pos.AdvView,'Callback', @updateQPlots,'Tag','detViewCheckb');
         
         pos.SaveBtn = [pos.AdvView(1)+pos.AdvView(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.1,pos.inspectBtn(4)];
         uicontrol(main_fig,'Style','pushbutton','String','Save .nirs',...
-            'FontSize',14,'FontWeight','bold','Units','normalized','Position',...
+            'FontSize',12,'FontWeight','bold','Units','normalized','Position',...
             pos.SaveBtn,'Callback', @save2dotnirs, 'Tag','saveBtn','Enable','off');
         
         %main_fig.Visible = 'on';
@@ -394,11 +426,16 @@ end
         
         colorb_sci = findobj('Tag','colorb_sci');
         if advancedView
+            % WE USE OPTION 1, BUT ONLY NEED TO "EXTEND" THE COMBO VIEW
+            sci_threshold = 0.8;
+            sci_mask = sci_array>=sci_threshold;
+            power_threshold = 0.1;
+            power_mask = power_array>=power_threshold;
             qualityColor = [0 0 0; 0.6 0.6 0.6; 1 1 1];
             % Scalp Contact Index
             %cla(myAxes.sci)
             
-            
+
             % thresholds a & b
             a = 0.6;
             b = 0.8;
@@ -407,8 +444,10 @@ end
             sci_expanded(sci_array >= a & sci_array<b) = 1;
             sci_expanded(sci_array >= b) = 2;
             %--             Option 1
-            imagesc(myAxes.sci,sci_expanded);
-            colormap(myAxes.sci,qualityColor);
+            %imagesc(myAxes.sci,sci_expanded);
+            %colormap(myAxes.sci,qualityColor);
+            imagesc(myAxes.sci,sci_mask);
+            colormap(myAxes.sci,[0 0 0; 1 1 1]);
             myAxes.sci.CLim = [0,2];
             colorbar(myAxes.sci,"eastoutside",...
                 "Ticks",[ 0 1 2 ],...
@@ -436,8 +475,10 @@ end
             power_expanded(power_array <  a) = 0;
             power_expanded(power_array >= a & power_array<b) = 1;
             power_expanded(power_array >= b) = 2;
-            imagesc(myAxes.power,power_expanded);
-            colormap(myAxes.power,qualityColor);
+            %imagesc(myAxes.power,power_expanded);
+            %colormap(myAxes.power,qualityColor);
+            imagesc(myAxes.power,power_mask);
+            colormap(myAxes.power,[0 0 0; 1 1 1]);
             myAxes.power.CLim = [0,2];
             colorbar(myAxes.power,"eastoutside",...
                 "Ticks",[ 0 1 2 ],...
@@ -541,7 +582,7 @@ end
             myAxes.combo.YLabel.String = 'Channel #';
             myAxes.combo.YLabel.FontWeight = 'bold';
             
-            % Drawing green bands
+            % Drawing grey bands (periods of no interest)
             hold(myAxes.sci,'on');
             hold(myAxes.power,'on');
             hold(myAxes.combo,'on');
@@ -562,7 +603,7 @@ end
 
 %% -------------------------------------------------------------------------
     function updateIPlot(source,iChannel,xLimWindow,iWindow,s,t)
-        
+        raw = getappdata(source.Parent,'rawDotNirs');
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
         qMats = nirsplot_param.quality_matrices;
         myAxes = nirsplot_param.main_fig_axes;
@@ -570,6 +611,8 @@ end
         conditions_mask = nirsplot_param.cond_mask;
         woi = nirsplot_param.quality_matrices.woi;
         fs = nirsplot_param.fs;
+      
+        rectangle_line_width = nirsplot_param.rectangle_line_width;
         sclAlpha = nirsplot_param.sclAlpha;
         dViewCheckb = findobj('Tag','detViewCheckb');
         
@@ -592,13 +635,18 @@ end
         plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
             cardiac_wl2_norm,'-r');
         
-        strLgnds = {'Lambda 1','Lambda 2'};
+        if(isfield(raw.SD,'Lambda'))
+             WLs = raw.SD.Lambda;
+            strLgnds = {num2str(WLs(1)),num2str(WLs(2))};
+        else
+            strLgnds = {'\lambda 1','\lambda 2'};
+        end
         
         updateQPlots(dViewCheckb,[]);
         
         if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.n_windows*qMats.sampPerWindow)
             xRect = 0.5; %Because of the offset at the begining of a window
-            yRect = iChannel+0.5;
+            yRect = iChannel-0.5;
             wRect = qMats.n_windows;
             hRect = 1;
             poiMatrgb = zeros(n_channels,xLimWindow(2),3);
@@ -608,7 +656,10 @@ end
             impoiMat = imagesc(myAxes.inspector,'XData',...
                 [t(xLimWindow(1)),t(xLimWindow(2))],...
                 'YData',YLimStd,'CData',poiMatrgb,'AlphaData',alphaMat);
-            
+            ticksVals = linspace(0,XLimStd(2),8);
+            myAxes.inspector.XAxis.TickValues=ticksVals(2:end-1);
+            ticksLab = round(linspace(0,nirsplot_param.t(end),8));
+            myAxes.inspector.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
             % Drawing onsets
             c = sum(conditions_mask);
             COI = find(conditions_mask);
@@ -629,8 +680,15 @@ end
             end
             
         else
+            ticksVals = linspace(myAxes.inspector.XAxis.Limits(1),myAxes.inspector.XAxis.Limits(2),8);
+            myAxes.inspector.XAxis.TickValues=ticksVals(2:end-1);
+            ticksLab = round(ticksVals);
+            myAxes.inspector.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
+            
             xRect = iWindow-0.5;
             yRect = iChannel-0.5;
+            xQlabels = xRect + 1;
+            yQlabels = yRect + 1;
             wRect = 1;
             hRect = 1;
             
@@ -639,34 +697,37 @@ end
             textVAlign = 'top';
             if xRect > (qMats.n_windows/2)
                 textHAlign = 'right';
+                 xQlabels = xRect - 0.5;
             end
             if yRect > (n_channels/2)
                 textVAlign = 'bottom';
+                yQlabels = yRect - 0.5;
             end
-            text(myAxes.power,xRect,yRect,num2str(qMats.power_array(iChannel,iWindow),'%.3f'),...
+            text(myAxes.power,xQlabels,yQlabels,num2str(qMats.power_array(iChannel,iWindow),'%.3f'),...
                 'Color','red','FontSize',10,'FontWeight','bold','BackgroundColor','#FFFF00',...
                 'Margin',1,'Clipping','on',...
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
-            text(myAxes.sci,xRect,yRect,num2str(qMats.sci_array(iChannel,iWindow),'%.3f'),...
+            text(myAxes.sci,xQlabels,yQlabels,num2str(qMats.sci_array(iChannel,iWindow),'%.3f'),...
                 'Color','red','FontSize',10,'FontWeight','bold','BackgroundColor','#FFFF00',...
                 'Margin',1,'Clipping','on',...
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
-            %             %--graphical debug
-            %             graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
-            %                 qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs);
+            %--graphical debug
+            %graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
+            %     qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs);
+            %figure(source.Parent); 
         end
         myAxes.inspector.YLim = YLimStd;
         myAxes.inspector.XLim = XLimStd;
         myAxes.inspector.YLabel.String = ['Channel ', num2str(iChannel)];
         
-        lgn = legend(myAxes.inspector,strLgnds,'Box','off');
+        lgn = legend(myAxes.inspector,strLgnds,'Box','off','FontSize',10);
         
         rectangle(myAxes.combo,'Position',[xRect yRect wRect hRect],...
-            'EdgeColor','m','FaceColor','none','Linewidth',2);
+            'EdgeColor','m','FaceColor','none','Linewidth',rectangle_line_width);
         rectangle(myAxes.power,'Position',[xRect yRect wRect hRect],...
-            'EdgeColor','m','FaceColor','none','Linewidth',2);
+            'EdgeColor','m','FaceColor','none','Linewidth',rectangle_line_width);
         rectangle(myAxes.sci,'Position',[xRect yRect wRect hRect],...
-            'EdgeColor','m','FaceColor','none','Linewidth',2);
+            'EdgeColor','m','FaceColor','none','Linewidth',rectangle_line_width);
         
     end
 
@@ -681,6 +742,13 @@ end
         lambdas = nirsplot_param.lambdas;
         n_channels = nirsplot_param.n_channels;
         qltyThld = nirsplot_param.quality_threshold;
+        
+        dodFlag = nirsplot_param.dodFlag;
+        if dodFlag
+           dm = mean(abs(raw.d),1);
+           raw.d = exp(-raw.procResult.dod).*(ones(size(raw.d,1),1)*dm);
+        end
+        
         % Set the bandpass filter parameters
         %fs = 1/mean(diff(raw.t));
         fs = nirsplot_param.fs;
@@ -715,7 +783,7 @@ end
             interval = (j-1)*window_samples-(j-1)*(overlap_samples)+1 : j*window_samples-(j-1)*(overlap_samples);
             cardiac_windows(:,:,:,j) = cardiac_data(:,interval,:);
         end
-        parfor j = 1:n_windows
+        for j = 1:n_windows
             cardiac_window = cardiac_windows(:,:,:,j);
             sci_array_channels = zeros(1,size(cardiac_window,3));
             power_array_channels = zeros(1,size(cardiac_window,3));
@@ -800,6 +868,7 @@ end
         qualityMats.good_combo_link = good_combo_link;
         qualityMats.good_combo_window = good_combo_window;
         qualityMats.woi = woi;
+        qualityMats.MeasListAct = [idx_gcl; idx_gcl];
         %
     end
 
@@ -818,7 +887,11 @@ end
         t = nirsplot_parameters.t;
         mergewoi_flag = nirsplot_parameters.mergewoi_flag;
         n_channels = nirsplot_parameters.n_channels;
-        conditions_mask = logical(nirsplot_parameters.cond_mask);
+        if strcmp(nirsplot_parameters.cond_mask,'all')
+            conditions_mask = ones(1,size(s,2));
+        else
+            conditions_mask = logical(nirsplot_parameters.cond_mask);
+        end
         
         allowed_samp = window_samples*n_windows;
         poi = sum(s(1:allowed_samp,conditions_mask),2);
@@ -952,7 +1025,7 @@ end
         tIncMan = ones(length(t),1);
         save([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],'SD','t','d','s','aux','tIncMan');
         %Notify to the user if the new file was succesfully created
-        saving_status = exist('dotNirs_nirsplot.nirs','file');
+        saving_status = exist([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],'file');
         if saving_status
             msgbox('Operation Completed','Success');
         else
@@ -964,7 +1037,7 @@ end
 
     function graphicDebug(window1,window2,fs)
         %cross-correlate the two wavelength signals - both should have cardiac pulsations
-        similarity = xcorr(window1,window2,'unbiased');
+        [similarity,lags] = xcorr(window1,window2,'unbiased');
         if any(abs(similarity)>eps)
             % this makes the SCI=1 at lag zero when x1=x2 AND makes the power estimate independent of signal length, amplitude and Fs
             similarity = length(window1)*similarity./sqrt(sum(abs(window1).^2)*sum(abs(window2).^2));
@@ -975,9 +1048,13 @@ end
         f3=figure(3);
         clf(f3);
         subplot(2,1,1);
-        plot(f3.Children(1),similarity);
+        plot(f3.Children(1),lags,similarity);
+        ylabel('Xcorr');
         subplot(2,1,2);
-        plot(f3.Children(1),pxx);
+        plot(f3.Children(1),f,pxx);
+        ylabel('Power');
+        ylim([0 0.125]);
+        yline(0.1,'--');
     end
 
     function sciThreshold(source, event)

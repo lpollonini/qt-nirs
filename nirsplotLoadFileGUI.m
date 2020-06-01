@@ -32,6 +32,8 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         condCheckBLabel         matlab.ui.control.Label
         treeDotNirs             matlab.ui.container.Tree
         treeNodesDotNirs        matlab.ui.container.TreeNode
+        dodCheckBox             matlab.ui.control.CheckBox
+
     end
     
     
@@ -150,9 +152,34 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.nChanLab.Text   = num2str(app.nChannels);
             app.secDurLab.Text  = num2str(app.secDur,'%.2f');
             
+            % Checking for OD data
+            if isfield(app.rawDotNirs,'procResult')
+               if ~isempty(app.rawDotNirs.procResult.dod)
+                  app.dodCheckBox.Enable = 'on'; 
+               end
+            else
+                app.dodCheckBox.Enable = 'off';
+            end
+            
             % Create StimuliSelectionBoxes
             xOffset = 16;
             yOffset = 145;
+            
+            if ~isfield(app.rawDotNirs,'s')
+                frequency_samp = 1/mean(diff(app.rawDotNirs.t));
+                if isfield(app.rawDotNirs,'StimDesign')
+                    nStim = length(app.rawDotNirs.StimDesign);
+                    sTmp = zeros(size(app.rawDotNirs.d,1),nStim);
+                    for iStim = 1:nStim
+                        sTmp(floor(app.rawDotNirs.StimDesign(iStim).onset * frequency_samp),iStim) = 1;
+                    end
+                    app.rawDotNirs.s = sTmp;
+                    clear sTmp;
+                else
+                    error('Stimuli information is not available.');
+                end
+            end           
+            
             app.nCond = size(app.rawDotNirs.s,2);
             app.condCheckBoxes.delete;
             for iCB=1:app.nCond
@@ -222,7 +249,9 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                 'window',app.windowSec,...
                 'overlap',app.windowOverlap,....
                 'qualityThreshold',app.quality_threshold,...
-                'conditionsMask',app.condMask);
+                'conditionsMask',app.condMask,...
+                'dodFlag',app.dodCheckBox.Value,...
+                'guiFlag',1);
         end
     end
     
@@ -272,6 +301,13 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.LoadButton.ButtonPushedFcn = createCallbackFcn(app,@LoadDotNirsDirPushed,true);
             app.LoadButton.Position = [120 515 79 22];
             app.LoadButton.Text = 'Sel. Folder';
+            
+            % Create dodCheckBox
+            app.dodCheckBox = uicheckbox(app.NIRSPlotGUIUIFigure);
+            app.dodCheckBox.Value = 0;
+            app.dodCheckBox.Text = 'Load OD';
+            app.dodCheckBox.Position = [24 510 70 22];
+            app.dodCheckBox.Enable = 'off';
             
             % Create SourcesLabel
             app.SourcesLabel = uilabel(app.NIRSPlotGUIUIFigure);
