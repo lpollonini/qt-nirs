@@ -1,24 +1,56 @@
 function quality_matrices = nirsplot(dotNirsFilePath,varargin)
-%NIRSPLOT one-line description
+%NIRSPLOT is a Matlab-based tool for the quality assessment of fNIRS data. 
+%Nirsplot can quantify the quality of an fNIRS recording in two different ways, by using a GUI or through a function call.
+%Graphically, the Nirsplot GUI allows the user to locate a working folder for processing and quantifying the .nirs files within the working folder. 
+%Programatically, the users also can retrieve a set of quality measures by calling nirsplot from a Matlab script. 
 %
-% output = function(inputs) More detailed description which can probably be
-% two-line explanation.
-%
-%Comprenhensive explanation and input/output variables description
-%explanation
-%explanation
-%explanation
-%
-% rawDotNirs,fcut_,window_,overlap_,q_threshold,cond_mask,lambda_mask_)
-% raw: raw data in Homer format. Ex: raw = load('nirx_sample.nirs','-mat')
-% fcut: 1x2 array [fmin fmax] representing the bandpass of the cardiac pulsation (default [0.5 2.5])
-% window: length in seconds of the window to partition the signal with (defaut: 5)
-% overlap: fraction overlap (0..0.99) between adjacent windows (default: 0, no overlap)
-% lambda_mask: binary array mapping the selected two wavelength to correlate
-% (default: [1 1 ...], the first two encountered, no matter how many there are)
 
-%close all
+% Usage information
+% Using Nirsplot inside of a script allows the users to specify a set of parameters for the quality assessment. The first parameter must be the path of a .nirs file or the path to a folder containing several .nirs files. In addition to the .nirs path, the user can specify a list of parameters in a pairwise mode including:
+% 
+% Parameter keyword Description
+%  freqCut:   1x2 array [fmin fmax] representing the bandpass of the cardiac pulsation (default [0.5 2.5])
+%  window :   length in seconds of the window to partition the signal with (defaut: 5)
+%  overlap:     fraction overlap (0..0.99) between adjacent windows (default: 0, no overlap)
+%  qualityThreshold:   The required quality value (normalized; 0-1) of good-quality windows in every channel (default: 0.75)
+%  conditionsMask:   A binary mask (or the keyword 'all') to indicate the conditions for computing the periods of interest (default: 'all')
+%  lambdaMask:    A binary array mapping the selected two wavelength to compute the SCI (default: [1 1], the first two WLs)
+%  dodFlag:     A flag indicating to work from DOD data (default: 0)
+%  guiFlag:     A flag indicating whether to start or not the GUI.
 
+%
+% 
+% An example of Nirsplot usage is:
+% 
+% bpFmin = 0.5; bpFmax = 2.5;
+% windowSec = 5;
+% windowOverlap = 0;
+% quality_threshold = 0.9;
+% qualityMatrices = nirsplot([pwd,filesep,'tmpDotNirs.nirs'],...
+%                 'freqCut',[bpFmin, bpFmax],...
+%                 'window',windowSec,...
+%                 'overlap',windowOverlap,....
+%                 'qualityThreshold',quality_threshold,...
+%                 'conditionsMask','all',...
+%                 'dodFlag',0,...
+%                 'guiFlag',0);
+% 
+% The 'qualityMatrices' output variable is an structure that includes the set of fields:
+% 
+% sci_array: Matrix containing the SCI values (dimension: #timewindows X #channels)
+% power_array: Matrix containing the PeakPower values (dimension: #timewindows X #channels)
+% combo_array: Matrix containing the QualityMask values (dimension: #timewindows X #channels)
+% combo_array_expanded: Matrix containing the QualityMask values for the advanced mode (#timewindows X #channels)
+% bad_links: List of the channels (averaged across timewindows) below the 'qualityThreshold' value
+% bad_windows: List of the timewindows (averaged across channels) below the 'qualityThreshold' value
+% sampPerWindow: Samples within a time window
+% fs: Sampling frequency
+% n_windows: Number of time windows
+% cardiac_data: Filtered version of the fNIRS data (dimension: #WLs X #samples X #channels)
+% good_combo_link: List of the channels (averaged across the time windows) above the 'qualityThreshold' value
+% good_combo_window: List of the time windows (averaged across the channels) above the 'qualityThreshold' value
+% woi: Data structure cointaining the Windows of Interest information (epochs of interest throughout the recording)
+% MeasListAct: Array mask of the channels achieving the required level of quality (length: #Channels X #WLs)
 
 if nargin < 1
     nirsplotLoadFileGUI();
