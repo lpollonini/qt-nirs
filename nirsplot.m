@@ -1,8 +1,8 @@
 function quality_matrices = nirsplot(dotNirsFilePath,varargin)
-%NIRSPLOT is a Matlab-based tool for the quality assessment of fNIRS data. 
-%Nirsplot can quantify the quality of an fNIRS recording in two different ways, by using a GUI or through a function call.
-%Graphically, the Nirsplot GUI allows the user to locate a working folder for processing and quantifying the .nirs files within the working folder. 
-%Programatically, the users also can retrieve a set of quality measures by calling nirsplot from a Matlab script. 
+% NIRSPLOT is a Matlab-based tool for the quality assessment of fNIRS data. 
+% Nirsplot can quantify the quality of an fNIRS recording in two different ways, by using a GUI or through a function call.
+% Graphically, the Nirsplot GUI allows the user to locate a working folder for processing and quantifying the .nirs files within the working folder. 
+% Programatically, the users also can retrieve a set of quality measures by calling nirsplot from a Matlab script. 
 %
 
 % Usage information
