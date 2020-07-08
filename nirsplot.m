@@ -2,11 +2,25 @@ function quality_matrices = nirsplot(dotNirsFilePath,varargin)
 % NIRSPLOT is a Matlab-based tool for the quality assessment of fNIRS data. 
 % Nirsplot can quantify the quality of an fNIRS recording in two different ways, by using a GUI or through a function call.
 % Graphically, the Nirsplot GUI allows the user to locate a working folder for processing and quantifying the .nirs files within the working folder. 
-% Programatically, the users also can retrieve a set of quality measures by calling nirsplot from a Matlab script. 
+% Programmatically, the users also can retrieve a set of quality measures by calling nirsplot from a Matlab script. 
 %
-
 % Usage information
-% Using Nirsplot inside of a script allows the users to specify a set of parameters for the quality assessment. The first parameter must be the path of a .nirs file or the path to a folder containing several .nirs files. In addition to the .nirs path, the user can specify a list of parameters in a pairwise mode including:
+% Using Nirsplot inside of a script allows the users to specify a set of 
+% parameters for the quality assessment. The 'dotNirsFilePath' parameter 
+% can be the path of a .nirs file or the path to a folder containing 
+% several .nirs files or a struct containing:
+%              d* 
+%              t* 
+%      CondNames
+%            aux
+%              s* 
+%             SD* 
+%     procResult
+%       userdata 
+%      procInput
+% *required
+% In addition to the .nirs path, the user 
+% can specify a list of parameters in a pairwise mode including:
 % 
 % Parameter keyword Description
 %  freqCut:   1x2 array [fmin fmax] representing the bandpass of the cardiac pulsation (default [0.5 2.5])
@@ -57,16 +71,16 @@ if nargin < 1
     return;
 end
 
-if isfile(dotNirsFilePath)
-    [filepath,name,ext] = fileparts(dotNirsFilePath);
-    if strcmpi(ext,'.nirs')
-        rawDotNirs = load(dotNirsFilePath,'-mat');
-    else
-        error('The input file should be a .nirs file format');
-        %We should check that the required variables are in the file
-    end
-else
-    if isfolder(dotNirsFilePath)
+if ischar(dotNirsFilePath)
+    if isfile(dotNirsFilePath)
+        [filepath,name,ext] = fileparts(dotNirsFilePath);
+        if strcmpi(ext,'.nirs')
+            rawDotNirs = load(dotNirsFilePath,'-mat');
+        else
+            error('The input file should be a .nirs file format');
+            %We should check that the required variables are in the file
+        end
+    elseif isfolder(dotNirsFilePath)
         disp(['The input data is a folder. ',...
             'All .nirs files inside ',dotNirsFilePath,' will be evaluated.']);
         nirsplotLoadFileGUI(dotNirsFilePath);
@@ -74,6 +88,21 @@ else
     else
         error('The input path does not exist.');
     end
+elseif isstruct(dotNirsFilePath)
+    rawDotNirs = dotNirsFilePath;
+    flagValidStruct = (isfield(rawDotNirs,'d') && ...
+        isfield(rawDotNirs,'t') && ...
+        isfield(rawDotNirs,'SD') && ...
+        (isfield(rawDotNirs,'StimDesign') || isfield(rawDotNirs,'s')));
+
+    if flagValidStruct == true
+        filepath = pwd;
+        name = 'NirsplotAnalized';
+        ext = '.nirs';
+    else
+        error(['The input data does not have the required fields (t, SD, s).']);
+    end
+    
 end
 
 propertyArgIn = varargin;
@@ -643,6 +672,7 @@ end
         conditions_mask = nirsplot_param.cond_mask;
         woi = nirsplot_param.quality_matrices.woi;
         fs = nirsplot_param.fs;
+        fcut = nirsplot_param.fcut;
       
         rectangle_line_width = nirsplot_param.rectangle_line_width;
         sclAlpha = nirsplot_param.sclAlpha;
@@ -745,7 +775,7 @@ end
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
             %--graphical debug
             %graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
-            %     qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs);
+            %     qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs,fcut);
             %figure(source.Parent); 
         end
         myAxes.inspector.YLim = YLimStd;
@@ -1049,11 +1079,16 @@ end
         dotNirsPath = nirsplot_param.dotNirsPath;        
         % saving the indices of good-quality channels
         SD = raw.SD;
-        SD.MeasListAct = [active_channels; ones(size(SD.MeasList,1)/2,1)];
+%        SD.MeasListAct = [active_channels; ones(size(SD.MeasList,1)/2,1)];
+        SD.MeasListAct = [active_channels; active_channels];
         t = raw.t;
         d = raw.d;
         s = raw.s;
-        aux = raw.aux;
+        if isfield(raw, 'aux')
+            aux = raw.aux;
+        else
+            aux = [];
+        end
         tIncMan = ones(length(t),1);
         save([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],'SD','t','d','s','aux','tIncMan');
         %Notify to the user if the new file was succesfully created
@@ -1066,8 +1101,8 @@ end
         
     end
 
-
-    function graphicDebug(window1,window2,fs)
+%%
+    function graphicDebug(window1,window2,fs,fcut)
         %cross-correlate the two wavelength signals - both should have cardiac pulsations
         [similarity,lags] = xcorr(window1,window2,'unbiased');
         if any(abs(similarity)>eps)
@@ -1084,6 +1119,8 @@ end
         ylabel('Xcorr');
         subplot(2,1,2);
         plot(f3.Children(1),f,pxx);
+        xline(f3.Children(1),fcut(1),'r--');
+        xline(f3.Children(1),fcut(2),'r--');
         ylabel('Power');
         ylim([0 0.125]);
         yline(0.1,'--');

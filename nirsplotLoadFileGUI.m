@@ -201,6 +201,8 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         % Button pushed function: LoadButton
         function LoadDotNirsDirPushed(app, event)
             app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nir files folder');
+            drawnow;
+            figure(app.NIRSPlotGUIUIFigure);
             LoadDotNirsDir(app, app.dotNirsPath);
         end
         
@@ -209,10 +211,11 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.dotNirsPath = dotNirsPath;
             %Search for .nirs files in the folder
             dotNirsFound = dir([app.dotNirsPath,filesep,'*.nirs']);
-            folder = split(dotNirsFound(1,1).folder,filesep);
-            folder = folder{end};
+
             % Add nodes to the tree with those .nirs files found
             if ~isempty(dotNirsFound)
+                folder = split(dotNirsFound(1,1).folder,filesep);
+                folder = folder{end};
                 app.treeDotNirs.Children(1).Children.delete;
                 app.treeDotNirs.Children(1).Text = folder;
                 
@@ -226,7 +229,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             else
                 opts = struct('WindowStyle','modal',...
                     'Interpreter','none');
-                errordlg('.nirs files not found','Invalid dir',opts);
+                errordlg('No .nirs files were found, try other folders.','Invalid dir',opts);
             end
             
         end
@@ -294,7 +297,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.treeDotNirs = uitree(app.NIRSPlotGUIUIFigure);
             app.treeDotNirs.Position = uicomp(2,:);
             app.treeDotNirs.SelectionChangedFcn = createCallbackFcn(app,@treeSelection,true);
-            uitreenode(app.treeDotNirs,'Text','.nirs files');           
+            uitreenode(app.treeDotNirs,'Text','');           
             
             % Create LoadButton
             app.LoadButton = uibutton(app.NIRSPlotGUIUIFigure, 'push');            
@@ -423,7 +426,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.PlotButton = uibutton(app.NIRSPlotGUIUIFigure, 'push');
             app.PlotButton.ButtonPushedFcn = createCallbackFcn(app, @PlotButtonIndiv, true);
             app.PlotButton.Position = [120 35 70 22];
-            app.PlotButton.Text = 'Plot indiv.';
+            app.PlotButton.Text = 'Go';
             
             % Show the figure after all components are created
             app.NIRSPlotGUIUIFigure.Visible = 'on';
