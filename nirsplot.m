@@ -74,12 +74,24 @@ end
 if ischar(dotNirsFilePath)
     if isfile(dotNirsFilePath)
         [filepath,name,ext] = fileparts(dotNirsFilePath);
-        if strcmpi(ext,'.nirs')
-            rawDotNirs = load(dotNirsFilePath,'-mat');
-        else
-            error('The input file should be a .nirs file format');
-            %We should check that the required variables are in the file
+        switch ext
+            case '.nirs'
+                rawNirs = load(dotNirsFilePath,'-mat');
+            case '.snirf'   
+                rawsnirf = SnirfClass(dotNirsFilePath);
+                rawNirs.d = rawsnirf.Get_d;
+                rawNirs.s = rawsnirf.Get_s;
+                rawNirs.t = rawsnirf.Get_t;
+                rawNirs.SD = rawsnirf.Get_SD;
+            otherwise
+                 error('The input file should be a .nirs file format');
         end
+%         if strcmpi(ext,'.nirs')
+%             rawNirs = load(dotNirsFilePath,'-mat');
+%         else
+%             error('The input file should be a .nirs file format');
+%             %We should check that the required variables are in the file
+%         end
     elseif isfolder(dotNirsFilePath)
         disp(['The input data is a folder. ',...
             'All .nirs files inside ',dotNirsFilePath,' will be evaluated.']);
@@ -89,11 +101,11 @@ if ischar(dotNirsFilePath)
         error('The input path does not exist.');
     end
 elseif isstruct(dotNirsFilePath)
-    rawDotNirs = dotNirsFilePath;
-    flagValidStruct = (isfield(rawDotNirs,'d') && ...
-        isfield(rawDotNirs,'t') && ...
-        isfield(rawDotNirs,'SD') && ...
-        (isfield(rawDotNirs,'StimDesign') || isfield(rawDotNirs,'s')));
+    rawNirs = dotNirsFilePath;
+    flagValidStruct = (isfield(rawNirs,'d') && ...
+        isfield(rawNirs,'t') && ...
+        isfield(rawNirs,'SD') && ...
+        (isfield(rawNirs,'StimDesign') || isfield(rawNirs,'s')));
 
     if flagValidStruct == true
         filepath = pwd;
@@ -158,33 +170,33 @@ end
 
 %------ Sorting for nirstoolbox compatibility ------
 varNames = {'source','detector','dummy','type'};
-MeasList_table = table(rawDotNirs.SD.MeasList(:,1),...
-    rawDotNirs.SD.MeasList(:,2),...
-    rawDotNirs.SD.MeasList(:,3),...
-    rawDotNirs.SD.MeasList(:,4),...
+MeasList_table = table(rawNirs.SD.MeasList(:,1),...
+    rawNirs.SD.MeasList(:,2),...
+    rawNirs.SD.MeasList(:,3),...
+    rawNirs.SD.MeasList(:,4),...
     'VariableNames',varNames);
 
 colsToSortBy = {'source', 'detector', 'type'};
 [MeasList_table, idxML] = sortrows(MeasList_table, colsToSortBy);
-rawDotNirs.SD.MeasList = table2array(MeasList_table);
-rawDotNirs.d = rawDotNirs.d(:,idxML);
+rawNirs.SD.MeasList = table2array(MeasList_table);
+rawNirs.d = rawNirs.d(:,idxML);
 %---------------------------------------------------
 
-frequency_samp = 1/mean(diff(rawDotNirs.t));
+frequency_samp = 1/mean(diff(rawNirs.t));
 % Creating 's' variable (stimuli matrix) from the information in StimDesign
-if ~isfield(rawDotNirs,'s')
-    if isfield(rawDotNirs,'StimDesign')
-        nStim = length(rawDotNirs.StimDesign);
-        sTmp = zeros(size(rawDotNirs.d,1),nStim);
+if ~isfield(rawNirs,'s')
+    if isfield(rawNirs,'StimDesign')
+        nStim = length(rawNirs.StimDesign);
+        sTmp = zeros(size(rawNirs.d,1),nStim);
         for iStim = 1:nStim
-            for iOnset=1:length(rawDotNirs.StimDesign(iStim).onset)
-                onsetTmp = floor(rawDotNirs.StimDesign(iStim).onset(iOnset) * frequency_samp);
-                durTmp = floor(rawDotNirs.StimDesign(iStim).dur(iOnset)* frequency_samp);
-                %sTmp(floor(rawDotNirs.StimDesign(iStim).onset(iOnset) * frequency_samp),iStim) = 1;
+            for iOnset=1:length(rawNirs.StimDesign(iStim).onset)
+                onsetTmp = floor(rawNirs.StimDesign(iStim).onset(iOnset) * frequency_samp);
+                durTmp = floor(rawNirs.StimDesign(iStim).dur(iOnset)* frequency_samp);
+                %sTmp(floor(rawNirs.StimDesign(iStim).onset(iOnset) * frequency_samp),iStim) = 1;
                 sTmp(onsetTmp:(onsetTmp+durTmp),iStim) = 1;
             end
         end
-        rawDotNirs.s = sTmp;
+        rawNirs.s = sTmp;
         clear sTmp;
     else
         error('Stimuli information is not available.');
@@ -206,10 +218,10 @@ if ~exist('q_threshold','var')
     q_threshold = 0.75;
 end
 if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
-    cond_mask = ones(1,size(rawDotNirs.s,2));
+    cond_mask = ones(1,size(rawNirs.s,2));
 end
 if ~exist('lambda_mask_','var')
-    lambdas_ = unique(rawDotNirs.SD.MeasList(:,4));
+    lambdas_ = unique(rawNirs.SD.MeasList(:,4));
     lambda_mask_ = ones(length(lambdas_),1);
 end
 if ~exist('dodFlag_','var')
@@ -222,6 +234,7 @@ end
 
 nirsplot_parameters.dotNirsPath = filepath;
 nirsplot_parameters.dotNirsFile = name;
+nirsplot_parameters.dotNirsExt = ext;
 nirsplot_parameters.fcut = fcut_;
 nirsplot_parameters.window = window_;
 nirsplot_parameters.overlap = overlap_;
@@ -230,11 +243,11 @@ nirsplot_parameters.lambdas = lambdas_;
 nirsplot_parameters.dodFlag = dodFlag_;
 nirsplot_parameters.mergewoi_flag = true;
 nirsplot_parameters.quality_threshold = q_threshold;
-nirsplot_parameters.n_channels = size(rawDotNirs.d,2)/2;
-nirsplot_parameters.n_sources = size(rawDotNirs.SD.SrcPos,1);
-nirsplot_parameters.n_detectors = size(rawDotNirs.SD.DetPos,1);
-nirsplot_parameters.s = rawDotNirs.s;
-nirsplot_parameters.t = rawDotNirs.t;
+nirsplot_parameters.n_channels = size(rawNirs.d,2)/2;
+nirsplot_parameters.n_sources = size(rawNirs.SD.SrcPos,1);
+nirsplot_parameters.n_detectors = size(rawNirs.SD.DetPos,1);
+nirsplot_parameters.s = rawNirs.s;
+nirsplot_parameters.t = rawNirs.t;
 
 
 nirsplot_parameters.fs = frequency_samp;
@@ -254,11 +267,21 @@ report_table = [];
 
 
 % Create GUI
+prev_window = findobj('type','figure');
+if ~isempty(prev_window)
+    close(prev_window);
+end
 [main_fig_axes,main_fig] = createGUI();
 
 nirsplot_parameters.main_fig_axes = main_fig_axes;
 setappdata(main_fig,'nirsplot_parameters',nirsplot_parameters);
-setappdata(main_fig,'rawDotNirs',rawDotNirs);
+
+switch ext
+    case '.nirs'
+        setappdata(main_fig,'rawNirs',rawNirs);
+    case '.snirf'
+        setappdata(main_fig,'rawNirs',rawSnirf);
+end
 
 % Computation
 [quality_matrices] = qualityCompute(main_fig);
@@ -470,6 +493,7 @@ end
         n_channels = nirsplot_param.n_channels;
         woi = nirsplot_param.quality_matrices.woi;
         sclAlpha = nirsplot_param.sclAlpha;
+        window_time = nirsplot_param.window;
         
         %Unpacking
         sci_array = qMats.sci_array;
@@ -604,10 +628,12 @@ end
             myAxes.sci.CLim = [0,1];
             %myAxes.sci.YLim =[0.5, n_channels+0.5];
             %myAxes.sci.XLim = [0.5 size(sci_mask,2)+0.5];
-            ticksVals = linspace(0,qMats.n_windows,8);
-            myAxes.sci.XAxis.TickValues=ticksVals(2:end-1);
-            ticksLab = round(linspace(0,nirsplot_param.t(end),8));
-            myAxes.sci.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
+            %ticksVals = linspace(0,qMats.n_windows,8);
+            ticksVals = (0:50:nirsplot_param.t(end))./window_time;
+            myAxes.sci.XAxis.TickValues=ticksVals(2:end);
+            %ticksLab = round(linspace(0,nirsplot_param.t(end),8));
+            ticksLab = 0:50:nirsplot_param.t(end);
+            myAxes.sci.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
             myAxes.sci.Colormap = [0 0 0;1 1 1];
             colorbar(myAxes.sci,'eastoutside',...
                 'Tag','colorb_sci',...
@@ -623,8 +649,8 @@ end
             imagesc(myAxes.power,power_mask);
             myAxes.power.CLim = [0, 1];
             %myAxes.power.YLim =[1, n_channels];
-            myAxes.power.XAxis.TickValues=ticksVals(2:end-1);
-            myAxes.power.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
+            myAxes.power.XAxis.TickValues=ticksVals(2:end);
+            myAxes.power.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
             myAxes.power.Colormap = [0 0 0;1 1 1];
             colorbar(myAxes.power,"eastoutside","Ticks",[0.25 0.75],...
                 'Limits',[0,1],'TickLabels',{'Bad','Good'});
@@ -636,8 +662,8 @@ end
             myAxes.combo.CLim = [0, 1];
             %myAxes.combo.YLim =[1, n_channels];
             myAxes.combo.Colormap = [0 0 0;1 1 1];
-            myAxes.combo.XAxis.TickValues=ticksVals(2:end-1);
-            myAxes.combo.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
+            myAxes.combo.XAxis.TickValues=ticksVals(2:end);
+            myAxes.combo.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
             colorbar(myAxes.combo,"eastoutside","Ticks",[0.25 0.75],...
                 'Limits',[0,1],'TickLabels',{'Bad','Good'});
             myAxes.combo.YLabel.String = 'Channel #';
@@ -664,7 +690,7 @@ end
 
 %% -------------------------------------------------------------------------
     function updateIPlot(source,iChannel,xLimWindow,iWindow,s,t)
-        raw = getappdata(source.Parent,'rawDotNirs');
+        raw = getappdata(source.Parent,'rawNirs');
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
         qMats = nirsplot_param.quality_matrices;
         myAxes = nirsplot_param.main_fig_axes;
@@ -673,7 +699,8 @@ end
         woi = nirsplot_param.quality_matrices.woi;
         fs = nirsplot_param.fs;
         fcut = nirsplot_param.fcut;
-      
+        window_time = nirsplot_param.window;
+        
         rectangle_line_width = nirsplot_param.rectangle_line_width;
         sclAlpha = nirsplot_param.sclAlpha;
         dViewCheckb = findobj('Tag','detViewCheckb');
@@ -718,10 +745,12 @@ end
             impoiMat = imagesc(myAxes.inspector,'XData',...
                 [t(xLimWindow(1)),t(xLimWindow(2))],...
                 'YData',YLimStd,'CData',poiMatrgb,'AlphaData',alphaMat);
-            ticksVals = linspace(0,XLimStd(2),8);
-            myAxes.inspector.XAxis.TickValues=ticksVals(2:end-1);
-            ticksLab = round(linspace(0,nirsplot_param.t(end),8));
-            myAxes.inspector.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
+            %ticksVals = linspace(0,XLimStd(2),8);
+            ticksVals = (0:50:nirsplot_param.t(end));
+            myAxes.inspector.XAxis.TickValues=ticksVals(2:end);
+            %ticksLab = round(linspace(0,nirsplot_param.t(end),8));
+            ticksLab = 0:50:nirsplot_param.t(end);
+            myAxes.inspector.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
             % Drawing onsets
             c = sum(conditions_mask);
             COI = find(conditions_mask);
@@ -742,10 +771,13 @@ end
             end
             
         else
-            ticksVals = linspace(myAxes.inspector.XAxis.Limits(1),myAxes.inspector.XAxis.Limits(2),8);
-            myAxes.inspector.XAxis.TickValues=ticksVals(2:end-1);
+            %ticksVals = linspace(myAxes.inspector.XAxis.Limits(1),myAxes.inspector.XAxis.Limits(2),8);
+            %ticksVals = linspace(myAxes.inspector.XAxis.Limits(1),myAxes.inspector.XAxis.Limits(2),5);
+            ticksVals = myAxes.inspector.XAxis.Limits(1);
+            ticksVals = round(ticksVals(1)): (round(ticksVals(1))+window_time);
+            myAxes.inspector.XAxis.TickValues=ticksVals(1:end);
             ticksLab = round(ticksVals);
-            myAxes.inspector.XAxis.TickLabels=split(num2str(ticksLab(2:end-1)));
+            myAxes.inspector.XAxis.TickLabels=split(num2str(ticksLab(1:end)));
             
             xRect = iWindow-0.5;
             yRect = iChannel-0.5;
@@ -780,7 +812,8 @@ end
         end
         myAxes.inspector.YLim = YLimStd;
         myAxes.inspector.XLim = XLimStd;
-        myAxes.inspector.YLabel.String = ['Channel ', num2str(iChannel)];
+        %myAxes.inspector.YLabel.String = ['Channel ', num2str(iChannel)];
+        myAxes.inspector.YLabel.String = ['S', num2str(raw.SD.MeasList(iChannel*2,1)),'-D',num2str(raw.SD.MeasList(iChannel*2,2)),'(',num2str(iChannel),')'];
         
         lgn = legend(myAxes.inspector,strLgnds,'Box','off','FontSize',10);
         
@@ -795,7 +828,7 @@ end
 
 %% -------------------------------------------------------------------------
     function [qualityMats] = qualityCompute(main_fig)
-        raw = getappdata(main_fig,'rawDotNirs');
+        raw = getappdata(main_fig,'rawNirs');
         nirsplot_param = getappdata(main_fig,'nirsplot_parameters');
         fcut = nirsplot_param.fcut;
         window = nirsplot_param.window;
@@ -1073,24 +1106,38 @@ end
 %% -------------------------------------------------------------------------
     function saving_status = save2dotnirs(source, events)
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
-        raw = getappdata(source.Parent,'rawDotNirs');
         active_channels = nirsplot_param.quality_matrices.active_channels;
-        dotNirsFileName = nirsplot_param.dotNirsFile;
-        dotNirsPath = nirsplot_param.dotNirsPath;        
-        % saving the indices of good-quality channels
-        SD = raw.SD;
-%        SD.MeasListAct = [active_channels; ones(size(SD.MeasList,1)/2,1)];
-        SD.MeasListAct = [active_channels; active_channels];
-        t = raw.t;
-        d = raw.d;
-        s = raw.s;
-        if isfield(raw, 'aux')
-            aux = raw.aux;
-        else
-            aux = [];
+        dotNirsPath = nirsplot_param.dotNirsPath;  
+                dotNirsFileName = nirsplot_param.dotNirsFile;
+        dotNirsExt = nirsplot_param.dotNirsExt;
+        switch dotNirsExt
+            case '.nirs'
+                 raw = getappdata(source.Parent,'rawNirs');                 
+                 raw.SD.MeasListAct = [active_channels; active_channels];    
+                 raw.tIncMan = ones(length(raw.t),1);
+                 save([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],...
+                    '-struct','raw','-MAT');
+            case '.snirf'
+                raw = getappdata(source.Parent,'rawSnirf');
         end
-        tIncMan = ones(length(t),1);
-        save([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],'SD','t','d','s','aux','tIncMan');
+        
+%        raw = getappdata(source.Parent,'rawNirs');      
+        % saving the indices of good-quality channels
+%        SD = raw.SD;
+%        SD.MeasListAct = [active_channels; ones(size(SD.MeasList,1)/2,1)];
+%        SD.MeasListAct = [active_channels; active_channels];
+%        t = raw.t;
+%        d = raw.d;
+%        s = raw.s;
+%        if isfield(raw, 'aux')
+%            aux = raw.aux;
+%        else
+%            aux = [];
+%        end
+%        tIncMan = ones(length(t),1);
+%        save([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],...
+%            'SD','t','d','s','aux','tIncMan');
+        
         %Notify to the user if the new file was succesfully created
         saving_status = exist([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],'file');
         if saving_status
@@ -1134,7 +1181,7 @@ end
 
 %% -------------------------------------------------------------------------
     function [qualityMats] = qualityCompute2(main_fig)
-        raw = getappdata(main_fig,'rawDotNirs');
+        raw = getappdata(main_fig,'rawNirs');
         nirsplot_param = getappdata(main_fig,'nirsplot_parameters');
         fcut = nirsplot_param.fcut;
         window = nirsplot_param.window;
