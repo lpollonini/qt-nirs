@@ -140,8 +140,20 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             dotNirsFileSel = event.SelectedNodes.Text;
             app.dotNirsFile = dotNirsFileSel;
             disp(['Loading: ',app.dotNirsPath,filesep,dotNirsFileSel]);
-            app.rawDotNirs = load([app.dotNirsPath,filesep,app.dotNirsFile],'-mat');            
-            
+            [filepath,name,ext] = fileparts([app.dotNirsPath,filesep,dotNirsFileSel]);
+            switch ext
+                case '.nirs'
+                    app.rawDotNirs = load([app.dotNirsPath,filesep,app.dotNirsFile],'-mat');
+                case '.snirf'
+                    rawsnirf = SnirfClass([app.dotNirsPath,filesep,app.dotNirsFile]);
+                    app.rawDotNirs.d = rawsnirf.Get_d;
+                    app.rawDotNirs.s = rawsnirf.Get_s;
+                    app.rawDotNirs.t = rawsnirf.Get_t;
+                    app.rawDotNirs.SD = rawsnirf.Get_SD;
+                otherwise
+                    error('The input file should be a .nirs file format');
+            end
+     
             [app.sampDur,app.nChannels] = size(app.rawDotNirs.d);
             app.nChannels = app.nChannels/2;
             app.nSources        = size(app.rawDotNirs.SD.SrcPos,1);
@@ -200,7 +212,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         
         % Button pushed function: LoadButton
         function LoadDotNirsDirPushed(app, event)
-            app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nir files folder');
+            app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nirs files folder');
             drawnow;
             figure(app.NIRSPlotGUIUIFigure);
             LoadDotNirsDir(app, app.dotNirsPath);
@@ -210,7 +222,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         function LoadDotNirsDir(app, dotNirsPath)
             app.dotNirsPath = dotNirsPath;
             %Search for .nirs files in the folder
-            dotNirsFound = dir([app.dotNirsPath,filesep,'*.nirs']);
+            dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);
 
             % Add nodes to the tree with those .nirs files found
             if ~isempty(dotNirsFound)
