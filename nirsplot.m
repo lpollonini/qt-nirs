@@ -312,7 +312,7 @@ end
         pos.main = [0.125 0.05 0.75 0.85]; % left, bottom, width, height
         main_fig = figure('Units','normalized',...
             'Position',pos.main,'Visible','off',...
-            'Name','NIRSPlot','NumberTitle','off','MenuBar','none');
+            'Name','NIRSPlot','NumberTitle','off','MenuBar','none','Toolbar','figure');
         
         % Axes
         % SCI
@@ -424,8 +424,11 @@ end
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
         n_channels = nirsplot_param.n_channels;
         qMats = nirsplot_param.quality_matrices;
+        overlap_samples = qMats.overlap_samples;
         s = nirsplot_param.s;
         t = nirsplot_param.t;
+        allowed_samp = qMats.allowed_samp;
+        
         
         button = 0;
         flagDispWindow = false;
@@ -439,7 +442,8 @@ end
                 case 1
                     flagDispWindow = true;
                 case 3
-                    xLimWindow = [1,(qMats.sampPerWindow*qMats.n_windows)];
+                    %xLimWindow = [1,(qMats.sampPerWindow*qMats.n_windows)];
+                     xLimWindow = [1,allowed_samp];
                     pastChannel = iChannel;
                     flagDispWindow = false;
                 case 28 % left-arrow key
@@ -470,8 +474,10 @@ end
             if flagDispWindow == true
                 %xLimWindow = [(qMats.sampPerWindow*iWindow)+1,...
                 %    qMats.sampPerWindow*(iWindow+1)];
-                xLimWindow = [(qMats.sampPerWindow*(iWindow-1))+1,...
-                    (qMats.sampPerWindow*iWindow)];
+                %xLimWindow = [(qMats.sampPerWindow*(iWindow-1))+1,...
+                %    (qMats.sampPerWindow*iWindow)];
+                xLimWindow = [((qMats.sampPerWindow-overlap_samples)*(iWindow-1))+overlap_samples+1,...
+                    ((qMats.sampPerWindow-overlap_samples)*iWindow+overlap_samples)];
             end
             if button ~=27
                 if iChannel>0 && iChannel<=n_channels && iWindow>0 && iWindow<=qMats.n_windows
@@ -491,10 +497,12 @@ end
         qMats = nirsplot_param.quality_matrices;
         myAxes = nirsplot_param.main_fig_axes;
         n_channels = nirsplot_param.n_channels;
+        overlap = nirsplot_param.overlap;
         woi = nirsplot_param.quality_matrices.woi;
         sclAlpha = nirsplot_param.sclAlpha;
         window_time = nirsplot_param.window;
-        
+        raw = getappdata(source.Parent,'rawNirs');
+
         %Unpacking
         sci_array = qMats.sci_array;
         power_array = qMats.power_array;
@@ -508,7 +516,9 @@ end
         advancedView = source.Value;
         mygray = [0 0 0; repmat([0.7 0.7 0.7],100,1); 1 1 1];
         mymap = [0 0 0;repmat([1 0 0],100,1);1 1 1 ];
-        
+        overlap_samples_ = nirsplot_param.window*nirsplot_param.fs*nirsplot_param.overlap;
+        window_samples_ = nirsplot_param.window*nirsplot_param.fs;
+        n_windows_ = (length(raw.t)-overlap_samples_)/(window_samples_-overlap_samples_);
         colorb_sci = findobj('Tag','colorb_sci');
         if advancedView
             % WE USE OPTION 1, BUT ONLY NEED TO "EXTEND" THE COMBO VIEW
@@ -528,19 +538,20 @@ end
             sci_expanded(sci_array <  a) = 0;
             sci_expanded(sci_array >= a & sci_array<b) = 1;
             sci_expanded(sci_array >= b) = 2;
-            %--             Option 1
-            %imagesc(myAxes.sci,sci_expanded);
-            %colormap(myAxes.sci,qualityColor);
+%------------ Option 1
+%             imagesc(myAxes.sci,sci_expanded);
+%             colormap(myAxes.sci,qualityColor);
+%             myAxes.sci.CLim = [0,2];
+%             colorbar(myAxes.sci,"eastoutside",...
+%                 "Ticks",[ 0 1 2 ],...
+%                 'TickLabels',{[char(hex2dec('2717')), 'SCI <=',num2str(a)],...
+%                 [num2str(a),'< SCI <',num2str(b)],...
+%                 [char(hex2dec('2713')), 'SCI >=',num2str(b)]},...
+%                 'Limits',[0 2],...
+%                 'ButtonDownFcn',@sciThreshold);
             imagesc(myAxes.sci,sci_mask);
             colormap(myAxes.sci,[0 0 0; 1 1 1]);
-            myAxes.sci.CLim = [0,2];
-            colorbar(myAxes.sci,"eastoutside",...
-                "Ticks",[ 0 1 2 ],...
-                'TickLabels',{[char(hex2dec('2717')), 'SCI <=',num2str(a)],...
-                [num2str(a),'< SCI <',num2str(b)],...
-                [char(hex2dec('2713')), 'SCI >=',num2str(b)]},...
-                'Limits',[0 2],...
-                'ButtonDownFcn',@sciThreshold);
+           
             %--             Option 2
             %             imagesc(myAxes.sci,sci_expanded);
             %             myAxes.sci.CLim = [a, b];
@@ -607,6 +618,10 @@ end
                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
             myAxes.combo.YLabel.String = 'Channel #';
             myAxes.combo.YLabel.FontWeight = 'bold';
+            % For figures MAs detected/undetected             
+             myAxes.combo.YAxis.TickValues = 1:n_channels;
+             myAxes.combo.YAxis.TickLabels = num2cell([num2str(raw.SD.MeasList(1:2:end,1)),repmat('-',n_channels,1),num2str(raw.SD.MeasList(1:2:end,2))],2);            
+             myAxes.combo.YAxis.FontSize = 7;
             
             hold(myAxes.sci,'on');
             hold(myAxes.power,'on');
@@ -628,10 +643,15 @@ end
             myAxes.sci.CLim = [0,1];
             %myAxes.sci.YLim =[0.5, n_channels+0.5];
             %myAxes.sci.XLim = [0.5 size(sci_mask,2)+0.5];
-            %ticksVals = linspace(0,qMats.n_windows,8);
-            ticksVals = (0:50:nirsplot_param.t(end))./window_time;
-            myAxes.sci.XAxis.TickValues=ticksVals(2:end);
             %ticksLab = round(linspace(0,nirsplot_param.t(end),8));
+            %ticksVals = linspace(0,qMats.n_windows,8);
+            %ticksVals = (0:50:nirsplot_param.t(end))./window_time;
+            %ticksVals = (0:50:nirsplot_param.t(end))./(window_time-(window_time*overlap));
+            tickOffsetWind = 50/nirsplot_param.window;
+            ticksVals = (0:n_windows_)*window_samples_;
+            ticksVals = ticksVals(1:tickOffsetWind:length(ticksVals));
+            ticksVals = floor(ticksVals./window_samples_);
+            myAxes.sci.XAxis.TickValues=ticksVals(2:end);
             ticksLab = 0:50:nirsplot_param.t(end);
             myAxes.sci.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
             myAxes.sci.Colormap = [0 0 0;1 1 1];
@@ -641,8 +661,7 @@ end
                 'Limits',[0,1],'TickLabels',{'Bad','Good'});
             myAxes.sci.YLabel.String = 'Channel #';
             myAxes.sci.YLabel.FontWeight = 'bold';
-            
-            
+
             % Power peak
             power_threshold = 0.1;
             power_mask = power_array>=power_threshold;
@@ -668,6 +687,7 @@ end
                 'Limits',[0,1],'TickLabels',{'Bad','Good'});
             myAxes.combo.YLabel.String = 'Channel #';
             myAxes.combo.YLabel.FontWeight = 'bold';
+
             
             % Drawing grey bands (periods of no interest)
             hold(myAxes.sci,'on');
@@ -700,6 +720,7 @@ end
         fs = nirsplot_param.fs;
         fcut = nirsplot_param.fcut;
         window_time = nirsplot_param.window;
+        overlap_samples = qMats.overlap_samples;
         
         rectangle_line_width = nirsplot_param.rectangle_line_width;
         sclAlpha = nirsplot_param.sclAlpha;
@@ -733,13 +754,15 @@ end
         
         updateQPlots(dViewCheckb,[]);
         
-        if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.n_windows*qMats.sampPerWindow)
+        %if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.n_windows*qMats.sampPerWindow)
+        if (xLimWindow(2)-xLimWindow(1)+1) == (qMats.n_windows*(qMats.sampPerWindow-overlap_samples)+overlap_samples)
             xRect = 0.5; %Because of the offset at the begining of a window
             yRect = iChannel-0.5;
             wRect = qMats.n_windows;
             hRect = 1;
-            poiMatrgb = zeros(n_channels,xLimWindow(2),3);
-            poiMatrgb(:,:,:) = repmat(repelem(~woi.mat(1,:),qMats.sampPerWindow),n_channels,1,3).*(hex2dec('bf')/255);
+            %poiMatrgb = zeros(n_channels,xLimWindow(2)-overlap_samples,3);
+            %poiMatrgb(:,:,:) = repmat(repelem(~woi.mat(1,:),qMats.sampPerWindow-overlap_samples),n_channels,1,3).*(hex2dec('bf')/255);
+            poiMatrgb=repmat(~woi.poi_mat,1,1,3).*(hex2dec('bf')/255);
             alphaMat = poiMatrgb(:,:,1) * sclAlpha;
             
             impoiMat = imagesc(myAxes.inspector,'XData',...
@@ -847,6 +870,7 @@ end
         % Set the bandpass filter parameters
         %fs = 1/mean(diff(raw.t));
         fs = nirsplot_param.fs;
+        n_samples = size(raw.d,1);
         fcut_min = fcut(1);
         fcut_max = fcut(2);
         if fcut_max >= (fs)/2
@@ -857,8 +881,8 @@ end
         end
         [B1,A1]=butter(1,[fcut_min*(2/fs) fcut_max*(2/fs)]);
         
-        nirs_data = zeros(length(lambdas),size(raw.d,1),n_channels);
-        cardiac_data = zeros(length(lambdas),size(raw.d,1),n_channels); % Lambdas x time x channels
+        nirs_data = zeros(length(lambdas),n_samples,n_channels);
+        cardiac_data = zeros(length(lambdas),n_samples,n_channels); % Lambdas x time x channels
         for j = 1:length(lambdas)
             % Filter everything but the cardiac component
             idx = find(raw.SD.MeasList(:,4) == lambdas(j));
@@ -868,7 +892,7 @@ end
         end
         overlap_samples = floor(window*fs*overlap);
         window_samples = floor(window*fs);
-        n_windows = floor((size(cardiac_data,2)-overlap_samples)/(window_samples-overlap_samples));
+        n_windows = floor((n_samples-overlap_samples)/(window_samples-overlap_samples));
         cardiac_data = cardiac_data(find(lambda_mask),:,:);
         sci_array = zeros(size(cardiac_data,3),n_windows);    % Number of optode is from the user's layout, not the machine
         power_array = zeros(size(cardiac_data,3),n_windows);
@@ -907,7 +931,7 @@ end
         end
         
         % Summary analysis
-        [woi] = getWOI(window_samples,n_windows,nirsplot_param);
+        [woi,allowed_samp] = getWOI(window_samples,n_windows,overlap_samples,nirsplot_param);
         idxPoi = logical(woi.mat(1,:));
         
         mean_sci_link  = mean(sci_array(:,idxPoi),2);
@@ -959,10 +983,12 @@ end
         qualityMats.sampPerWindow = window_samples;
         qualityMats.fs = fs;
         qualityMats.n_windows = n_windows;
+        qualityMats.overlap_samples = overlap_samples;
         qualityMats.cardiac_data = cardiac_data;
         qualityMats.good_combo_link = good_combo_link;
         qualityMats.good_combo_window = good_combo_window;
         qualityMats.woi = woi;
+        qualityMats.allowed_samp = allowed_samp;
         qualityMats.MeasListAct = [idx_gcl; idx_gcl];
         %
     end
@@ -971,7 +997,7 @@ end
 
 
 %% -------------------------------------------------------------------------
-    function [woi] = getWOI(window_samples,n_windows,nirsplot_parameters)
+    function [woi,allowed_samp] = getWOI(window_samples,n_windows,overlap_samples,nirsplot_parameters)
         % Assuming no overlaped trials
         % The maximum number of allowed samples is window_samples*n_windows to consider
         % an integer number of windows, module(total_samples,n_windows) = 0
@@ -982,13 +1008,15 @@ end
         t = nirsplot_parameters.t;
         mergewoi_flag = nirsplot_parameters.mergewoi_flag;
         n_channels = nirsplot_parameters.n_channels;
+        
         if strcmp(nirsplot_parameters.cond_mask,'all')
             conditions_mask = ones(1,size(s,2));
         else
             conditions_mask = logical(nirsplot_parameters.cond_mask);
         end
         
-        allowed_samp = window_samples*n_windows;
+        %allowed_samp = n_windows*window_samples;
+        allowed_samp = n_windows*(window_samples-overlap_samples)+overlap_samples;
         poi = sum(s(1:allowed_samp,conditions_mask),2);
         poi = poi(1:allowed_samp);
         % Sometimes 's' variable encodes the stimuli durations by including consecutive
@@ -1004,7 +1032,7 @@ end
         %blckDurTime = (medIntTime/2) + (0.5*iqrIntTime);
         blckDurTime = medIntTime + (0.5*iqrIntTime);
         blckDurSamp = round(fs*blckDurTime);
-        blckDurWind = floor(blckDurSamp/window_samples);
+        blckDurWind = floor(blckDurSamp/((window_samples-overlap_samples)));% floor(blckDurSamp/window_samples);
         woi = struct('mat',zeros(n_channels,n_windows),...
             'start',zeros(1,nOnsets),...
             'end',zeros(1,nOnsets));
@@ -1016,7 +1044,7 @@ end
             if startPOI < 1
                 startPOI = 1;
             end
-            startWOI = floor(startPOI/window_samples);
+            startWOI = ceil(startPOI/((window_samples-overlap_samples)));%floor(startPOI/window_samples);
             if startWOI==0
                 startWOI = 1;
             end
@@ -1025,7 +1053,7 @@ end
             if endPOI > allowed_samp
                 endPOI = allowed_samp;
             end
-            endWOI = ceil(endPOI/window_samples);
+            endWOI = floor(endPOI/((window_samples-overlap_samples)));%ceil(endPOI/window_samples);
             poi(startPOI:endPOI) = 1;
             woi_array(startWOI:endWOI) = 1;
             woi.start(i) = startWOI;
@@ -1034,12 +1062,11 @@ end
         
         % See my comment about the preference of WOIs rather than of POIs, if POI
         % information is needed, uncomment next two lines and return POIs variables
-        % poi = poi';
-        % poiMat_ = repmat(poi,n_channels,1);
+         poi = poi';
+         poiMat_ = repmat(poi,n_channels,1);
         
         woiblank = 0;
         idxInit = [];
-        %woitmp = woi_array;
         woitmp = woi_array;
         
         % If the gap's duration between two consecutives blocks of interest is less than the
@@ -1067,6 +1094,7 @@ end
             woi_array = woitmp;
         end
         woi.mat = repmat(woi_array,n_channels,1);
+        woi.poi_mat = poiMat_;
     end
 
 %% -------------------------------------------------------------------------
