@@ -20,7 +20,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
         idxGoodCh % Indices of channels above the quality threhold
         parentFigure % The parent figure handle
         nirsplot_param % nirsplot parameters from the parent Figure
-        %raw % content of .fnirs raw file
+        raw % content of .fnirs raw file
 %        rawFname % filename of the .fnirs file
     end
     
@@ -31,6 +31,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
         % Code that executes after component creation
         function startupFcn(app, hFigure)
             app.parentFigure = hFigure;
+            app.raw = getappdata(app.parentFigure,'rawNirs');
             app.nirsplot_param = getappdata(app.parentFigure,'nirsplot_parameters');
             app.good_combo_link = app.nirsplot_param.quality_matrices.good_combo_link;
             app.qThld = app.nirsplot_param.quality_threshold;         
@@ -41,7 +42,8 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.barPlot.YLabel.String  = 'Channel';
             app.barPlot.XLim = [0,1];
             %app.barPlot.YTick = round(linspace(1,size(app.good_combo_link,1),5));
-            app.barPlot.YTick = 1:2:size(app.good_combo_link,1);
+            app.barPlot.YTick = 1:size(app.good_combo_link,1);
+            app.barPlot.YTickLabel = num2cell([num2str(app.raw.SD.MeasList(1:2:end,1)),repmat('-',app.nirsplot_param.n_channels,1),num2str(app.raw.SD.MeasList(1:2:end,2))],2);     
             %app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
             app.thldLn = xline(app.barPlot,app.qThld,'--r');
             app.ThresholdSlider.Value = round(app.qThld*100);
@@ -85,7 +87,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
 
             % Create ChannelselectionUIFigure and hide until all components are created
             app.ChannelselectionUIFigure = uifigure('Visible', 'off');
-            app.ChannelselectionUIFigure.Position = [100 100 532 381];
+            app.ChannelselectionUIFigure.Position = [100 100 530 800];
             app.ChannelselectionUIFigure.Name = 'Channel selection';
 
             % Create barPlot
@@ -93,7 +95,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
             title(app.barPlot, 'Good-quality Channels')
             xlabel(app.barPlot, 'Quality')
             ylabel(app.barPlot, '# Channel')
-            app.barPlot.Position = [120 42 402 319];
+            app.barPlot.Position = [110 42 402 750];
 
             % Create ThresholdSliderLabel
             app.ThresholdSliderLabel = uilabel(app.ChannelselectionUIFigure);
@@ -106,7 +108,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.ThresholdSlider.MajorTicks = [0 10 20 30 40 50 60 70 80 90 100];
             app.ThresholdSlider.Orientation = 'vertical';
             app.ThresholdSlider.ValueChangingFcn = createCallbackFcn(app, @ThresholdSliderValueChanging, true);
-            app.ThresholdSlider.Position = [44 58 3 303];
+            app.ThresholdSlider.Position = [44 70 3 690];
 
             % Create SaveButton
             app.SaveButton = uibutton(app.ChannelselectionUIFigure, 'push');
