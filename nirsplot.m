@@ -995,6 +995,9 @@ end
         qualityMats.allowed_samp = allowed_samp;
         qualityMats.MeasListAct = [idx_gcl; idx_gcl];
         qualityMats.MeasList = raw.SD.MeasList;
+        qualityMats.thresholds.sci = 0.8;
+        qualityMats.thresholds.peakpower = 0.1;
+        qualityMats.thresholds.quality = qltyThld;
         %
     end
 
