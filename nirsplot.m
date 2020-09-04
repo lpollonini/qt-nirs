@@ -180,6 +180,9 @@ colsToSortBy = {'source', 'detector', 'type'};
 [MeasList_table, idxML] = sortrows(MeasList_table, colsToSortBy);
 rawNirs.SD.MeasList = table2array(MeasList_table);
 rawNirs.d = rawNirs.d(:,idxML);
+if dodFlag_ == 1
+    rawNirs.procResult.dod = rawNirs.procResult.dod(:,idxML);
+end
 %---------------------------------------------------
 
 frequency_samp = 1/mean(diff(rawNirs.t));
@@ -985,11 +988,13 @@ end
         qualityMats.n_windows = n_windows;
         qualityMats.overlap_samples = overlap_samples;
         qualityMats.cardiac_data = cardiac_data;
-        qualityMats.good_combo_link = good_combo_link;
+        qualityMats.good_combo_link = [raw.SD.MeasList(1:2:end,1),...
+            raw.SD.MeasList(1:2:end,2),good_combo_link];
         qualityMats.good_combo_window = good_combo_window;
         qualityMats.woi = woi;
         qualityMats.allowed_samp = allowed_samp;
         qualityMats.MeasListAct = [idx_gcl; idx_gcl];
+        qualityMats.MeasList = raw.SD.MeasList;
         %
     end
 
@@ -1189,16 +1194,24 @@ end
         [pxx,f] = periodogram(similarity,hamming(length(similarity)),length(similarity),fs,'power');
         f3=figure(3);
         clf(f3);
-        subplot(2,1,1);
-        plot(f3.Children(1),lags,similarity);
-        ylabel('Xcorr');
-        subplot(2,1,2);
-        plot(f3.Children(1),f,pxx);
-        xline(f3.Children(1),fcut(1),'r--');
-        xline(f3.Children(1),fcut(2),'r--');
-        ylabel('Power');
-        ylim([0 0.125]);
-        yline(0.1,'--');
+        subplot(1,3,1);
+        plot(window1-2,'k-');
+        hold on;
+        plot(window2+2,'k--');
+        ylabel('Raw intensity','FontSize',15);% x_{\lambda_1}, x_{\lambda_2}');
+        legend('$x_{\lambda_1}$', '$x_{\lambda_2}$','Interpreter','latex','FontSize',16);
+        ylim([-7 7]);
+        subplot(1,3,2);
+        plot(f3.Children(1),lags,similarity,'k-');
+        yline(0.8,'r--');
+        ylim([-1 1]);
+        ylabel('$\bar{x}_{\lambda_1} \otimes \bar{x}_{\lambda_2}$','Interpreter','latex','FontSize',16);
+        subplot(1,3,3);
+        plot(f3.Children(1),f,pxx,'k-');
+        ylabel('$F(x_{\lambda_1} \otimes x_{\lambda_2})$','Interpreter','latex','FontSize',16);
+        ylim([0 0.5]);
+        yline(0.1,'r--');
+
     end
 
     function sciThreshold(source, event)
@@ -1335,9 +1348,13 @@ end
         qualityMats.fs = fs;
         qualityMats.n_windows = n_windows;
         qualityMats.cardiac_data = cardiac_data;
-        qualityMats.good_combo_link = good_combo_link;
+        qualityMats.good_combo_link = [raw.SD.MeasList(1:2:end,1),...
+            raw.SD.MeasList(1:2:end,2),good_combo_link];
         qualityMats.good_combo_window = good_combo_window;
         qualityMats.woi = woi;
+        qualityMats.allowed_samp = allowed_samp;
+        qualityMats.MeasListAct = [idx_gcl; idx_gcl];
+        qualityMats.MeasList = raw.SD.MeasList;
         %
     end
 end %end of nirsplot function definition

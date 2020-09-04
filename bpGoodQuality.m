@@ -87,7 +87,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
 
             % Create ChannelselectionUIFigure and hide until all components are created
             app.ChannelselectionUIFigure = uifigure('Visible', 'off');
-            app.ChannelselectionUIFigure.Position = [100 100 530 800];
+            app.ChannelselectionUIFigure.Position = [1 1 530 800];
             app.ChannelselectionUIFigure.Name = 'Channel selection';
 
             % Create barPlot
