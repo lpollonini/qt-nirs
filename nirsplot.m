@@ -168,6 +168,33 @@ while length(propertyArgIn) >= 2
     end
 end
 
+if ~exist('fcut_','var')
+    fcut_ = [0.5 2.5];
+end
+
+if ~exist('window_','var')
+    window_ = 5;
+end
+if ~exist('overlap_','var')
+    overlap_ = 0;
+end
+if ~exist('q_threshold','var')
+    q_threshold = 0.75;
+end
+if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
+    cond_mask = ones(1,size(rawNirs.s,2));
+end
+if ~exist('lambda_mask_','var')
+    lambdas_ = unique(rawNirs.SD.MeasList(:,4));
+    lambda_mask_ = ones(length(lambdas_),1);
+end
+if ~exist('dodFlag_','var')
+    dodFlag_ = 0;
+end
+if ~exist('guiFlag_','var')
+    guiFlag_ = 0;
+end
+
 %------ Sorting for nirstoolbox compatibility ------
 varNames = {'source','detector','dummy','type'};
 MeasList_table = table(rawNirs.SD.MeasList(:,1),...
@@ -207,32 +234,6 @@ if ~isfield(rawNirs,'s')
 end
 
 
-if ~exist('fcut_','var')
-    fcut_ = [0.5 2.5];
-end
-
-if ~exist('window_','var')
-    window_ = 5;
-end
-if ~exist('overlap_','var')
-    overlap_ = 0;
-end
-if ~exist('q_threshold','var')
-    q_threshold = 0.75;
-end
-if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
-    cond_mask = ones(1,size(rawNirs.s,2));
-end
-if ~exist('lambda_mask_','var')
-    lambdas_ = unique(rawNirs.SD.MeasList(:,4));
-    lambda_mask_ = ones(length(lambdas_),1);
-end
-if ~exist('dodFlag_','var')
-    dodFlag_ = 0;
-end
-if ~exist('guiFlag_','var')
-    guiFlag_ = 0;
-end
 
 
 nirsplot_parameters.dotNirsPath = filepath;
@@ -479,8 +480,10 @@ end
                 %    qMats.sampPerWindow*(iWindow+1)];
                 %xLimWindow = [(qMats.sampPerWindow*(iWindow-1))+1,...
                 %    (qMats.sampPerWindow*iWindow)];
-                xLimWindow = [((qMats.sampPerWindow-overlap_samples)*(iWindow-1))+overlap_samples+1,...
-                    ((qMats.sampPerWindow-overlap_samples)*iWindow+overlap_samples)];
+                %xLimWindow = [((qMats.sampPerWindow-overlap_samples)*(iWindow-1))+overlap_samples+1,...
+                %    ((qMats.sampPerWindow-overlap_samples)*iWindow+overlap_samples)];
+                xLimWindow = [(iWindow-1)*qMats.sampPerWindow-(iWindow-1)*(qMats.overlap_samples)+1,...
+                    iWindow*qMats.sampPerWindow-(iWindow-1)*(qMats.overlap_samples)];
             end
             if button ~=27
                 if iChannel>0 && iChannel<=n_channels && iWindow>0 && iWindow<=qMats.n_windows
@@ -832,9 +835,9 @@ end
                 'Margin',1,'Clipping','on',...
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
             %--graphical debug
-            %graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
-            %     qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs,fcut);
-            %figure(source.Parent); 
+%             graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
+%                 qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs,fcut);
+%             figure(source.Parent); 
         end
         myAxes.inspector.YLim = YLimStd;
         myAxes.inspector.XLim = XLimStd;
@@ -866,8 +869,9 @@ end
         
         dodFlag = nirsplot_param.dodFlag;
         if dodFlag
-           dm = mean(abs(raw.d),1);
-           raw.d = exp(-raw.procResult.dod).*(ones(size(raw.d,1),1)*dm);
+            dm = mean(abs(raw.d),1);
+            raw.d = exp(-raw.procResult.dod).*(ones(size(raw.d,1),1)*dm);
+%            raw.d = raw.procResult.dod;
         end
         
         % Set the bandpass filter parameters
