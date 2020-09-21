@@ -109,7 +109,7 @@ elseif isstruct(dotNirsFilePath)
 
     if flagValidStruct == true
         filepath = pwd;
-        name = 'NirsplotAnalized';
+        name = 'QTNIRSAnalized';
         ext = '.nirs';
     else
         error(['The input data does not have the required fields (t, SD, s).']);
@@ -154,12 +154,21 @@ while length(propertyArgIn) >= 2
             end
             
         case 'dodFlag'
-            if val == 1
-                dodFlag_ = 1; 
+            if isfield(rawNirs,'procResult')
+                if ~isempty(rawNirs.procResult.dod)
+                    if val == 1
+                        dodFlag_ = 1;
+                    else
+                        dodFlag_ = 0;
+                    end
+                else
+                    dodFlag_ = 0;
+                end
             else
-                dodFlag_ = 0;
+                warning('OD data is not available, I will use the raw data.');
+                dodFlag_ = -1;
             end
-        case 'guiFlag'
+    case 'guiFlag'
             if val == 1
                 guiFlag_ = 1;
             else
@@ -189,7 +198,7 @@ if ~exist('lambda_mask_','var')
     lambda_mask_ = ones(length(lambdas_),1);
 end
 if ~exist('dodFlag_','var')
-    dodFlag_ = 0;
+    dodFlag_ = -1;
 end
 if ~exist('guiFlag_','var')
     guiFlag_ = 0;
@@ -316,7 +325,7 @@ end
         pos.main = [0.125 0.05 0.75 0.85]; % left, bottom, width, height
         main_fig = figure('Units','normalized',...
             'Position',pos.main,'Visible','off',...
-            'Name','NIRSPlot','NumberTitle','off','MenuBar','none','Toolbar','figure');
+            'Name','QT-NIRS','NumberTitle','off','MenuBar','none','Toolbar','figure');
         
         % Axes
         % SCI
@@ -868,7 +877,7 @@ end
         qltyThld = nirsplot_param.quality_threshold;
         
         dodFlag = nirsplot_param.dodFlag;
-        if dodFlag
+        if dodFlag == 1
             dm = mean(abs(raw.d),1);
             raw.d = exp(-raw.procResult.dod).*(ones(size(raw.d,1),1)*dm);
 %            raw.d = raw.procResult.dod;

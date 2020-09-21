@@ -35,7 +35,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.nirsplot_param = getappdata(app.parentFigure,'nirsplot_parameters');
             app.good_combo_link = app.nirsplot_param.quality_matrices.good_combo_link;
             app.qThld = app.nirsplot_param.quality_threshold;         
-            app.bp = bar(app.barPlot,app.good_combo_link,'Horizontal','on');
+            app.bp = bar(app.barPlot,app.good_combo_link(:,3),'Horizontal','on');
             app.barPlot.YDir = 'reverse';          
             app.bp.FaceColor = 'flat';
             app.barPlot.Box = 'on';
@@ -47,7 +47,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
             %app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
             app.thldLn = xline(app.barPlot,app.qThld,'--r');
             app.ThresholdSlider.Value = round(app.qThld*100);
-            app.idxBadCh = app.good_combo_link<app.qThld;
+            app.idxBadCh = app.good_combo_link(:,3)<app.qThld;
             app.idxGoodCh = ~app.idxBadCh;
             app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
             app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
@@ -60,7 +60,7 @@ classdef bpGoodQuality < matlab.apps.AppBase
         function ThresholdSliderValueChanging(app, event)
             app.qThld  = (event.Value)/100;
             app.thldLn.Value = app.qThld;
-            app.idxBadCh = app.good_combo_link<app.qThld;
+            app.idxBadCh = app.good_combo_link(:,3)<app.qThld;
             app.idxGoodCh = ~app.idxBadCh;
             app.bp.CData(app.idxBadCh,:) = repmat([0.6, 0.6, 0.6],sum(app.idxBadCh),1);
             app.bp.CData(app.idxGoodCh,:) = repmat([0 1 0],sum(app.idxGoodCh),1);
@@ -93,8 +93,10 @@ classdef bpGoodQuality < matlab.apps.AppBase
             % Create barPlot
             app.barPlot = uiaxes(app.ChannelselectionUIFigure);
             title(app.barPlot, 'Good-quality Channels')
-            xlabel(app.barPlot, 'Quality')
-            ylabel(app.barPlot, '# Channel')
+            xlabel(app.barPlot, 'Quality');
+            xticks(app.barPlot,.2:.2:1);
+            xticklabels(app.barPlot,split(num2str(20:20:100)));
+            ylabel(app.barPlot, '# Channel');
             app.barPlot.Position = [110 42 402 750];
 
             % Create ThresholdSliderLabel

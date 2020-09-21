@@ -25,7 +25,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         CutoffFrequencyLabel    matlab.ui.control.Label
         PlotButton              matlab.ui.control.Button
         OverlappingLabel        matlab.ui.control.Label
-        WindowsoverlapSlider    matlab.ui.control.Slider
+        WindowsOverlapCtrl      matlab.ui.control.CheckBox
         QualityThresholdLabel   matlab.ui.control.Label
         QualityThresholdField   matlab.ui.control.NumericEditField
         condCheckBoxes          matlab.ui.control.CheckBox
@@ -91,6 +91,17 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                     app.secDur          = input_param.t(end);
                     app.secDurLab.Text  = num2str(app.secDur,'%.2f');
                 end
+                if isfield(input_param,'dodFlag')
+                    if input_param.dodFlag ~= -1
+                        app.dodCheckBox.Enable = 'on';
+                        app.dodCheckBox.Value = input_param.dodFlag;
+                    else
+                        app.dodCheckBox.Enable = 'off';
+                        app.dodCheckBox.Value = 0;
+                    end
+                else
+                    app.dodCheckBox.Enable = 'off';
+                end
                 if isfield(input_param,'fcut')
                     app.bpFmin = min(input_param.fcut);
                     app.bpFmax = max(input_param.fcut);
@@ -103,11 +114,12 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                 end
                 if isfield(input_param,'overlap')
                     app.windowOverlap = input_param.overlap;
-                    app.WindowsoverlapSlider.Value = app.windowOverlap*100;
+                    %app.WindowsoverlapSlider.Value = app.windowOverlap*100;
+                    app.WindowsOverlapCtrl.Value = app.windowOverlap>0;
                 end
                 if isfield(input_param,'quality_threshold')
                     app.quality_threshold = input_param.quality_threshold;
-                    app.QualityThresholdField.Value = app.quality_threshold;
+                    app.QualityThresholdField.Value = app.quality_threshold*100;
                 end
                 if isfield(input_param,'cond_mask')
                     % Create and fill StimuliSelectionBoxes
@@ -170,6 +182,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                   app.dodCheckBox.Enable = 'on'; 
                end
             else
+                app.dodCheckBox.Value = 0;
                 app.dodCheckBox.Enable = 'off';
             end
             
@@ -252,8 +265,9 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.bpFmin = app.FreqMinEditField.Value;
             app.bpFmax = app.FreqMaxEditField.Value;
             app.windowSec = app.LengthsecSpinner.Value;
-            app.windowOverlap = (app.WindowsoverlapSlider.Value)/100;
-            app.quality_threshold = app.QualityThresholdField.Value;
+            app.windowOverlap = app.WindowsOverlapCtrl.Value*0.5;
+            
+            app.quality_threshold = app.QualityThresholdField.Value/100;
             app.condMask = zeros(1,app.nCond);
             for iCB=1:app.nCond
                 app.condMask(iCB) = logical(app.condCheckBoxes(iCB).Value);
@@ -284,7 +298,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             % Create NIRSPlotGUIUIFigure and hide until all components are created
             app.NIRSPlotGUIUIFigure = uifigure('Visible', 'off','Tag','nirsplotGUI');
             app.NIRSPlotGUIUIFigure.Position = [w.x w.y w.width w.height];
-            app.NIRSPlotGUIUIFigure.Name = 'NIRSPlot GUI';
+            app.NIRSPlotGUIUIFigure.Name = 'QT-NIRS GUI';
             
             % Create NIRSPlotLabel
             uicomp(1,:) = [80 w.height-25 83 22];
@@ -295,7 +309,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.NIRSPlotLabel.FontColor = [0 0 1];
             app.NIRSPlotLabel.Position = uicomp(1,:);
             app.NIRSPlotLabel.HorizontalAlignment = 'center';
-            app.NIRSPlotLabel.Text = 'NIRSPlot';
+            app.NIRSPlotLabel.Text = 'QT-NIRS';
             
             % Create nirsfileEditFieldLabel
             uicomp(2,:) = [24 530 50 uicomp(1,4)];
@@ -412,21 +426,31 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.OverlappingLabel.Text = {'Overlapping'; '(%)'};
             
             % Create WindowsoverlapSlider
-            app.WindowsoverlapSlider = uislider(app.NIRSPlotGUIUIFigure);
-            app.WindowsoverlapSlider.MajorTicks = [0 25 50 75 100];
-            app.WindowsoverlapSlider.MajorTickLabels = {'0', '25', '50', '75', '100'};
-            app.WindowsoverlapSlider.Position = [99 255 94 3];
+%             app.WindowsoverlapSlider = uislider(app.NIRSPlotGUIUIFigure);
+%             app.WindowsoverlapSlider.MajorTicks = [0 25 50 75 100];
+%             app.WindowsoverlapSlider.MajorTickLabels = {'0', '25', '50', '75', '100'};
+%             app.WindowsoverlapSlider.Position = [99 255 94 3];
+            % Create WindowOverlapCtrl
+%             app.WindowsOverlapCtrl = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
+%             app.WindowsOverlapCtrl.Position = [99 245 50 22];
+%             app.WindowsOverlapCtrl.Value = 0;
+            % Create dodCheckBox
+            app.WindowsOverlapCtrl = uicheckbox(app.NIRSPlotGUIUIFigure);
+            app.WindowsOverlapCtrl.Value = 0;
+            app.WindowsOverlapCtrl.Text = 'Overlap';
+            app.WindowsOverlapCtrl.Position = [99 245 70 22];
+            app.WindowsOverlapCtrl.Enable = 'on';
             
             % Create QualityThresholdLabel
             app.QualityThresholdLabel = uilabel(app.NIRSPlotGUIUIFigure);
             app.QualityThresholdLabel.HorizontalAlignment = 'left';
             app.QualityThresholdLabel.Position = [16 195 80 28];
-            app.QualityThresholdLabel.Text = {'Quality'; '(0.1-1.0)'};
+            app.QualityThresholdLabel.Text = {'Quality'; '(0-100)'};
             
             % Create QualityThresholdField
             app.QualityThresholdField = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
             app.QualityThresholdField.Position = [99 195 50 22];
-            app.QualityThresholdField.Value = 0.9;
+            app.QualityThresholdField.Value = 90;
             
             % Create stimCheckBLabel
             app.condCheckBLabel = uilabel(app.NIRSPlotGUIUIFigure);
