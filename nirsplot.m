@@ -115,6 +115,25 @@ elseif isstruct(dotNirsFilePath)
         error(['The input data does not have the required fields (t, SD, s).']);
     end
     
+elseif isa(dotNirsFilePath,'nirs.core.Data')
+    rawNirs = struct;
+    rawNirs.SD = nirs.util.probe2sd( dotNirsFilePath.probe );
+    rawNirs.ml = rawNirs.SD.MeasList;
+    rawNirs.d = dotNirsFilePath.data;
+    rawNirs.t = dotNirsFilePath.time;
+    
+    
+    rawNirs.s = false(size(rawNirs.t));
+    for icond = 1:length(dotNirsFilePath.stimulus.keys)
+        stim = dotNirsFilePath.stimulus( dotNirsFilePath.stimulus.keys{icond} );
+        rawNirs.s = rawNirs.s | stim.getStimVector( rawNirs.t );
+    end
+    
+    rawNirs.s=1*rawNirs.s;
+    rawNirs.aux=rawNirs.s;    
+    filepath = pwd;
+    name = 'QTNIRSAnalized';
+    ext = '.nirs';   
 end
 
 propertyArgIn = varargin;
@@ -144,8 +163,28 @@ while length(propertyArgIn) >= 2
             end
             
         case 'conditionsMask'
-            if (ischar(val) && strcmp(val,'all')) || ~(any(val>1 | val<0))
-                cond_mask = val;
+%             if (ischar(val) && strcmp(val,'all')) || ~(any(val>1 | val<0))
+%                 cond_mask = val;
+%             end           
+            if ischar(val)
+                switch val
+                    case 'all'
+                        cond_mask = ones(1,size(rawNirs.s,2));
+                    case 'resting'
+                        cond_mask = val;
+                    otherwise
+                        warning(["Value ",val," in 'cond_mask' parameter not valid."...
+                            "Using the complete scan time."]);
+                        cond_mask = 'resting';
+                end
+            elseif isnumeric(val)
+                if ~(any(val>1 | val<0))
+                    cond_mask = val;
+                else
+                    warning(["Value ",val," not valid, use only binary values (0/1)."...
+                        "Using the complete scan time."]);
+                    cond_mask = 'resting';                    
+                end
             end
             
         case 'lambdaMask'
@@ -190,9 +229,9 @@ end
 if ~exist('q_threshold','var')
     q_threshold = 0.75;
 end
-if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
-    cond_mask = ones(1,size(rawNirs.s,2));
-end
+% if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
+%     cond_mask = ones(1,size(rawNirs.s,2));
+% end
 if ~exist('lambda_mask_','var')
     lambdas_ = unique(rawNirs.SD.MeasList(:,4));
     lambda_mask_ = ones(length(lambdas_),1);
@@ -790,22 +829,24 @@ end
             ticksLab = 0:50:nirsplot_param.t(end);
             myAxes.inspector.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
             % Drawing onsets
-            c = sum(conditions_mask);
-            COI = find(conditions_mask);
-            if c<9
-                colorOnsets = colorcube(8);
-            else
-                colorOnsets = colorcube(c+1);
-                colorOnsets = colorOnsets(1:end-1,:);
-            end
-            
-            for j=1:c
-                %mapping from 0,1 to 0,25%ofPeakToPeak
-                yOnset = (s(xLimWindow(1):xLimWindow(2),COI(j))*(YLimStd(2)-YLimStd(1))*0.25)-abs(YLimStd(1));
-                plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
-                    yOnset,'LineWidth',2,...
-                    'Color',colorOnsets(j,:));
-                strLgnds(2+j) = {['Cond ',num2str(COI(j))]};
+            if ~ischar(conditions_mask)
+                c = sum(conditions_mask);
+                COI = find(conditions_mask);
+                if c<9
+                    colorOnsets = colorcube(8);
+                else
+                    colorOnsets = colorcube(c+1);
+                    colorOnsets = colorOnsets(1:end-1,:);
+                end
+                
+                for j=1:c
+                    %mapping from 0,1 to 0,25%ofPeakToPeak
+                    yOnset = (s(xLimWindow(1):xLimWindow(2),COI(j))*(YLimStd(2)-YLimStd(1))*0.25)-abs(YLimStd(1));
+                    plot(myAxes.inspector,t(xLimWindow(1):xLimWindow(2)),...
+                        yOnset,'LineWidth',2,...
+                        'Color',colorOnsets(j,:));
+                    strLgnds(2+j) = {['Cond ',num2str(COI(j))]};
+                end
             end
             
         else
@@ -947,8 +988,16 @@ end
         end
         
         % Summary analysis
-        [woi,allowed_samp] = getWOI(window_samples,n_windows,overlap_samples,nirsplot_param);
-        idxPoi = logical(woi.mat(1,:));
+        if (1)
+            [woi,allowed_samp] = getWOI(window_samples,n_windows,overlap_samples,nirsplot_param);
+            idxPoi = logical(woi.mat(1,:));
+        else
+            [woi,allowed_samp] = getWOI(window_samples,n_windows,overlap_samples,nirsplot_param);
+            woi.mat = ones(n_channels,n_windows)
+            allowed_samp = ones(1,window_samples*n_windows);
+            woi.poi_mat = repmat(allowed_samp,n_channels,1);
+            idxPoi = logical(woi.mat(1,:));
+        end
         
         mean_sci_link  = mean(sci_array(:,idxPoi),2);
         std_sci_link  = std(sci_array(:,idxPoi),0,2);
@@ -1028,16 +1077,23 @@ end
         s = nirsplot_parameters.s;
         t = nirsplot_parameters.t;
         mergewoi_flag = nirsplot_parameters.mergewoi_flag;
-        n_channels = nirsplot_parameters.n_channels;
+        n_channels = nirsplot_parameters.n_channels;        
+        %allowed_samp = n_windows*window_samples;
+        allowed_samp = n_windows*(window_samples-overlap_samples)+overlap_samples;
         
         if strcmp(nirsplot_parameters.cond_mask,'all')
             conditions_mask = ones(1,size(s,2));
+        elseif strcmp(nirsplot_parameters.cond_mask,'resting')
+            woi = struct;
+            woi.mat = ones(n_channels,n_windows);
+            woi.poi_mat = ones(n_channels,allowed_samp,1);
+            woi.start = 1;
+            woi.end = n_windows;
+            return
         else
             conditions_mask = logical(nirsplot_parameters.cond_mask);
         end
         
-        %allowed_samp = n_windows*window_samples;
-        allowed_samp = n_windows*(window_samples-overlap_samples)+overlap_samples;
         poi = sum(s(1:allowed_samp,conditions_mask),2);
         poi = poi(1:allowed_samp);
         % Sometimes 's' variable encodes the stimuli durations by including consecutive

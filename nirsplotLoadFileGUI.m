@@ -125,22 +125,26 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                     % Create and fill StimuliSelectionBoxes
                     xOffset = 16;
                     yOffset = 145;
-                    app.nCond = length(input_param.cond_mask);
                     app.condMask = input_param.cond_mask;
-                    app.condCheckBoxes.delete;
-                    for iCB=1:app.nCond
-                        app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
-                        app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
-                            35, 15];
-                        app.condCheckBoxes(iCB).Value = input_param.cond_mask(iCB);
-                        app.condCheckBoxes(iCB).Text = num2str(iCB);
-                        mod_ = mod(iCB,5);
-                        if mod_ == 0
-                            yOffset = yOffset - 25;
-                            xOffset = 16;
-                        else
-                            xOffset = xOffset+40;
+                    if isnumeric(app.condMask)
+                        app.nCond = length(input_param.cond_mask);
+                        app.condCheckBoxes.delete;
+                        for iCB=1:app.nCond
+                            app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
+                            app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
+                                35, 15];
+                            app.condCheckBoxes(iCB).Value = input_param.cond_mask(iCB);
+                            app.condCheckBoxes(iCB).Text = num2str(iCB);
+                            mod_ = mod(iCB,5);
+                            if mod_ == 0
+                                yOffset = yOffset - 25;
+                                xOffset = 16;
+                            else
+                                xOffset = xOffset+40;
+                            end
                         end
+                    else
+                        app.nCond = size(input_param.s,2);
                     end
                 end
             end
