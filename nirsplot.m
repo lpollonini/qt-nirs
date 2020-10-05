@@ -121,8 +121,6 @@ elseif isa(dotNirsFilePath,'nirs.core.Data')
     rawNirs.ml = rawNirs.SD.MeasList;
     rawNirs.d = dotNirsFilePath.data;
     rawNirs.t = dotNirsFilePath.time;
-    
-    
     rawNirs.s = false(size(rawNirs.t));
     for icond = 1:length(dotNirsFilePath.stimulus.keys)
         stim = dotNirsFilePath.stimulus( dotNirsFilePath.stimulus.keys{icond} );
@@ -488,8 +486,8 @@ end
         pastWindow = 0;
         while button ~= 27
             [iWindow,iChannel,button] = my_ginput(1);
-            iWindow = round(iWindow);
-            iChannel = round(iChannel);
+            iWindow = floor(iWindow);
+            iChannel = floor(iChannel);
             switch button
                 case 1
                     flagDispWindow = true;
@@ -530,8 +528,22 @@ end
                 %    (qMats.sampPerWindow*iWindow)];
                 %xLimWindow = [((qMats.sampPerWindow-overlap_samples)*(iWindow-1))+overlap_samples+1,...
                 %    ((qMats.sampPerWindow-overlap_samples)*iWindow+overlap_samples)];
-                xLimWindow = [(iWindow-1)*qMats.sampPerWindow-(iWindow-1)*(qMats.overlap_samples)+1,...
-                    iWindow*qMats.sampPerWindow-(iWindow-1)*(qMats.overlap_samples)];
+                %xLimWindow = [(iWindow-1)*qMats.sampPerWindow-(iWindow-1)*(qMats.overlap_samples)+1,...
+                %    iWindow*qMats.sampPerWindow-(iWindow-1)*(qMats.overlap_samples)];
+                if nirsplot_param.overlap~=0
+                    if mod(iWindow,2)==0
+                        jj = floor((iWindow-1)/2)+1;
+                        xLimWindow = [(jj-1)*qMats.sampPerWindow+1 , jj*qMats.sampPerWindow];
+                        xLimWindow = xLimWindow + qMats.overlap_samples ;
+                    else
+                        jj = floor(iWindow/2)+1;
+                        xLimWindow = [(jj-1)*qMats.sampPerWindow+1 , jj*qMats.sampPerWindow];
+                    end
+                else
+                    xLimWindow = [(iWindow-1)*qMats.sampPerWindow+1 , iWindow*qMats.sampPerWindow];
+                end
+                
+                %disp(['xLimWindow:',num2str(xLimWindow(1)),'-',num2str(xLimWindow(2))]);
             end
             if button ~=27
                 if iChannel>0 && iChannel<=n_channels && iWindow>0 && iWindow<=qMats.n_windows
@@ -865,7 +877,7 @@ end
             wRect = 1;
             hRect = 1;
             
-            fprintf('SCI:%.3f \t Power:%.3f\n',qMats.sci_array(iChannel,iWindow),qMats.power_array(iChannel,iWindow));
+            %fprintf('SCI:%.3f \t Power:%.3f\n',qMats.sci_array(iChannel,iWindow),qMats.power_array(iChannel,iWindow));
             textHAlign = 'left';
             textVAlign = 'top';
             if xRect > (qMats.n_windows/2)
@@ -885,9 +897,9 @@ end
                 'Margin',1,'Clipping','on',...
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
             %--graphical debug
-%             graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
-%                 qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs,fcut);
-%             figure(source.Parent); 
+            % graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
+            %     qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs,fcut);
+            % figure(source.Parent); 
         end
         myAxes.inspector.YLim = YLimStd;
         myAxes.inspector.XLim = XLimStd;
@@ -949,16 +961,35 @@ end
         end
         overlap_samples = floor(window*fs*overlap);
         window_samples = floor(window*fs);
-        n_windows = floor((n_samples-overlap_samples)/(window_samples-overlap_samples));
+        if overlap ==0
+            n_windows = floor((n_samples)/(window_samples));
+        else % Valid for overlap=50%
+            n_windows = 2*floor((n_samples)/(window_samples))-1;
+        end
         cardiac_data = cardiac_data(find(lambda_mask),:,:);
         sci_array = zeros(size(cardiac_data,3),n_windows);    % Number of optode is from the user's layout, not the machine
         power_array = zeros(size(cardiac_data,3),n_windows);
         %fpower_array = zeros(size(cardiac_data,3),n_windows);
         cardiac_windows = zeros(length(lambdas),window_samples,n_channels,n_windows);
         for j = 1:n_windows
-            interval = (j-1)*window_samples-(j-1)*(overlap_samples)+1 : j*window_samples-(j-1)*(overlap_samples);
+            if overlap~=0
+                if mod(j,2)==0
+                    jj = floor((j-1)/2)+1;
+                    interval = (jj-1)*window_samples+1 : jj*window_samples;
+                    interval = interval + overlap_samples ;
+                else
+                    jj = floor(j/2)+1;
+                    interval = (jj-1)*window_samples+1 : jj*window_samples;
+                end
+            else 
+               interval = (j-1)*window_samples+1 : j*window_samples;
+            end
             cardiac_windows(:,:,:,j) = cardiac_data(:,interval,:);
+%             if j<5 || j>(n_windows-4)
+%                 disp(['interval(',num2str(j),'):',num2str(interval(1)),'-',num2str(interval(end))]);
+%             end
         end
+
         for j = 1:n_windows
             cardiac_window = cardiac_windows(:,:,:,j);
             sci_array_channels = zeros(1,size(cardiac_window,3));
@@ -1073,14 +1104,17 @@ end
         % an integer number of windows, module(total_samples,n_windows) = 0
         
         fs = nirsplot_parameters.fs;
-        n_channels = nirsplot_parameters.n_channels;
         s = nirsplot_parameters.s;
         t = nirsplot_parameters.t;
         mergewoi_flag = nirsplot_parameters.mergewoi_flag;
         n_channels = nirsplot_parameters.n_channels;        
         %allowed_samp = n_windows*window_samples;
-        allowed_samp = n_windows*(window_samples-overlap_samples)+overlap_samples;
-        
+        %allowed_samp = n_windows*(window_samples-overlap_samples)+overlap_samples;
+        if nirsplot_parameters.overlap ~= 0 
+            allowed_samp = (n_windows*window_samples+window_samples)/2;
+        else
+            allowed_samp = n_windows*window_samples;
+        end
         if strcmp(nirsplot_parameters.cond_mask,'all')
             conditions_mask = ones(1,size(s,2));
         elseif strcmp(nirsplot_parameters.cond_mask,'resting')
