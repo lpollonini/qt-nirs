@@ -1004,6 +1004,7 @@ end
                 else
                     warning('Similarity results close to zero');
                 end
+                similarity(isnan(similarity)) = 0;
                 [pxx,f] = periodogram(similarity,hamming(length(similarity)),length(similarity),fs,'power');
                 [pwrest,idx] = max(pxx(f<fcut_max)); % FIX Make it age-dependent
                 sci=similarity(length(squeeze(cardiac_window(1,:,k))));
