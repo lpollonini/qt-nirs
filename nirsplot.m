@@ -227,9 +227,9 @@ end
 if ~exist('q_threshold','var')
     q_threshold = 0.75;
 end
-% if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
-%     cond_mask = ones(1,size(rawNirs.s,2));
-% end
+if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
+    cond_mask = ones(1,size(rawNirs.s,2));
+end
 if ~exist('lambda_mask_','var')
     lambdas_ = unique(rawNirs.SD.MeasList(:,4));
     lambda_mask_ = ones(length(lambdas_),1);
@@ -1087,7 +1087,7 @@ end
         qualityMats.good_combo_window = good_combo_window;
         qualityMats.woi = woi;
         qualityMats.allowed_samp = allowed_samp;
-        qualityMats.MeasListAct = [idx_gcl; idx_gcl];
+        qualityMats.MeasListAct = repelem(idx_gcl,2);%[idx_gcl; idx_gcl];
         qualityMats.MeasList = raw.SD.MeasList;
         qualityMats.thresholds.sci = 0.8;
         qualityMats.thresholds.peakpower = 0.1;
