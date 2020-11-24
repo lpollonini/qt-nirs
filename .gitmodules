@@ -1,0 +1,3 @@
+[submodule "snirf_homer3"]
+	path = snirf_homer3
+	url = https://github.com/fNIRS/snirf_homer3.git
