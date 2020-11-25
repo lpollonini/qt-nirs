@@ -162,7 +162,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                     app.rawDotNirs = load([app.dotNirsPath,filesep,app.dotNirsFile],'-mat');
                 case '.snirf'
                     rawsnirf = SnirfClass([app.dotNirsPath,filesep,app.dotNirsFile]);
-                    app.rawDotNirs.d = rawsnirf.Get_d;
+                    %app.rawDotNirs.d = rawsnirf.Get_d;
                     app.rawDotNirs.s = rawsnirf.Get_s;
                     app.rawDotNirs.t = rawsnirf.Get_t;
                     app.rawDotNirs.SD = rawsnirf.Get_SD;
@@ -170,8 +170,9 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                     error('The input file should be a .nirs file format');
             end
      
-            [app.sampDur,app.nChannels] = size(app.rawDotNirs.d);
+            %[app.sampDur,app.nChannels] = size(app.rawDotNirs.d);
             app.nChannels = app.nChannels/2;
+            app.nChannels = size(app.rawDotNirs.SD.MeasList,1)/length(unique(app.rawDotNirs.SD.MeasList(:,end)));
             app.nSources        = size(app.rawDotNirs.SD.SrcPos,1);
             app.nDetectors      = size(app.rawDotNirs.SD.DetPos,1);
             app.secDur          = app.rawDotNirs.t(end);
@@ -190,10 +191,6 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                 app.dodCheckBox.Enable = 'off';
             end
             
-            % Create StimuliSelectionBoxes
-            xOffset = 16;
-            yOffset = 145;
-            
             if ~isfield(app.rawDotNirs,'s')
                 frequency_samp = 1/mean(diff(app.rawDotNirs.t));
                 if isfield(app.rawDotNirs,'StimDesign')
@@ -207,11 +204,22 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                 else
                     error('Stimuli information is not available.');
                 end
-            end           
+            end
             
+            % Create StimuliSelectionBoxes
+            xOffset = 14;
+            yOffset = 145;
             app.nCond = size(app.rawDotNirs.s,2);
             app.condCheckBoxes.delete;
-            for iCB=1:app.nCond
+            % 'Resting' option
+            app.condCheckBoxes(1) = uicheckbox(app.NIRSPlotGUIUIFigure);
+                app.condCheckBoxes(1).Position =[xOffset,yOffset,...
+                    60, 15];
+                app.condCheckBoxes(1).Value = 1;
+                app.condCheckBoxes(1).Text = 'Resting';
+                xOffset = xOffset + 80;
+                
+            for iCB=2:(app.nCond +1)
                 app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
                 app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
                     35, 15];
@@ -220,7 +228,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                 mod_ = mod(iCB,5);
                 if mod_ == 0
                     yOffset = yOffset - 25;
-                    xOffset = 16;
+                    xOffset = 14;
                 else
                     xOffset = xOffset+40;
                 end
@@ -232,7 +240,9 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nirs files folder');
             drawnow;
             figure(app.NIRSPlotGUIUIFigure);
-            LoadDotNirsDir(app, app.dotNirsPath);
+            if app.dotNirsPath~=0                
+                LoadDotNirsDir(app, app.dotNirsPath);
+            end
         end
         
         % Button pushed function: LoadButton
@@ -273,8 +283,12 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
             
             app.quality_threshold = app.QualityThresholdField.Value/100;
             app.condMask = zeros(1,app.nCond);
-            for iCB=1:app.nCond
-                app.condMask(iCB) = logical(app.condCheckBoxes(iCB).Value);
+            if app.condCheckBoxes(1).Value == 1
+                app.condMask = 'resting';
+            else
+                for iCB=1:app.nCond
+                    app.condMask(iCB) = logical(app.condCheckBoxes(iCB).Value);
+                end
             end
             
             app.reportTable = nirsplot([app.dotNirsPath,filesep,app.dotNirsFile],...

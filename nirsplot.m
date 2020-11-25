@@ -27,7 +27,8 @@ function quality_matrices = nirsplot(dotNirsFilePath,varargin)
 %  window :   length in seconds of the window to partition the signal with (defaut: 5)
 %  overlap:     fraction overlap (0..0.99) between adjacent windows (default: 0, no overlap)
 %  qualityThreshold:   The required quality value (normalized; 0-1) of good-quality windows in every channel (default: 0.75)
-%  conditionsMask:   A binary mask (or the keyword 'all') to indicate the conditions for computing the periods of interest (default: 'all')
+%  conditionsMask:   A binary mask or keyword to indicate the conditions
+%  for computing the periods of interest. Valid keywords include 'all' and 'resting' to consider all or none of the conditions (default: 'all').
 %  lambdaMask:    A binary array mapping the selected two wavelength to compute the SCI (default: [1 1], the first two WLs)
 %  dodFlag:     A flag indicating to work from DOD data (default: 0)
 %  guiFlag:     A flag indicating whether to start or not the GUI.
@@ -44,7 +45,7 @@ function quality_matrices = nirsplot(dotNirsFilePath,varargin)
 %                 'freqCut',[bpFmin, bpFmax],...
 %                 'window',windowSec,...
 %                 'overlap',windowOverlap,....
-%                 'qualityThreshold',quality_threshold,...
+%                 'qualityThreshold',quality_threshold,...j
 %                 'conditionsMask','all',...
 %                 'dodFlag',0,...
 %                 'guiFlag',0);
@@ -78,11 +79,12 @@ if ischar(dotNirsFilePath)
             case '.nirs'
                 rawNirs = load(dotNirsFilePath,'-mat');
             case '.snirf'   
-                rawsnirf = SnirfClass(dotNirsFilePath);
-                rawNirs.d = rawsnirf.Get_d;
-                rawNirs.s = rawsnirf.Get_s;
-                rawNirs.t = rawsnirf.Get_t;
-                rawNirs.SD = rawsnirf.Get_SD;
+                rawSnirf = SnirfClass(dotNirsFilePath);
+                rawNirs.d = rawSnirf.Get_d;
+                rawNirs.s = rawSnirf.Get_s;
+                rawNirs.t = rawSnirf.Get_t;
+                rawNirs.SD = rawSnirf.Get_SD;
+                rawNirs.aux = rawSnirf.GetAux;
             otherwise
                  error('The input file should be a .nirs file format');
         end
@@ -330,7 +332,8 @@ switch ext
     case '.nirs'
         setappdata(main_fig,'rawNirs',rawNirs);
     case '.snirf'
-        setappdata(main_fig,'rawNirs',rawSnirf);
+        %setappdata(main_fig,'rawNirs',rawSnirf);
+        setappdata(main_fig,'rawNirs',rawNirs);
 end
 
 % Computation
@@ -1255,31 +1258,25 @@ end
                  raw = getappdata(source.Parent,'rawNirs');                 
                  raw.SD.MeasListAct = [active_channels; active_channels];    
                  raw.tIncMan = ones(length(raw.t),1);
+                 if ~isfield(raw, 'aux')
+                     raw.aux = [];
+                 end
                  save([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],...
                     '-struct','raw','-MAT');
             case '.snirf'
-                raw = getappdata(source.Parent,'rawSnirf');
+                 raw = getappdata(source.Parent,'rawNirs');                 
+                 raw.SD.MeasListAct = [active_channels; active_channels];    
+                 raw.tIncMan = ones(length(raw.t),1);               
+                 if ~isfield(raw, 'aux')
+                     raw.aux = [];
+                 end
+                 snirf_saved = SnirfClass(raw);
+                 snirf_saved.Save([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.snirf']); 
         end
         
-%        raw = getappdata(source.Parent,'rawNirs');      
-        % saving the indices of good-quality channels
-%        SD = raw.SD;
-%        SD.MeasListAct = [active_channels; ones(size(SD.MeasList,1)/2,1)];
-%        SD.MeasListAct = [active_channels; active_channels];
-%        t = raw.t;
-%        d = raw.d;
-%        s = raw.s;
-%        if isfield(raw, 'aux')
-%            aux = raw.aux;
-%        else
-%            aux = [];
-%        end
-%        tIncMan = ones(length(t),1);
-%        save([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],...
-%            'SD','t','d','s','aux','tIncMan');
         
         %Notify to the user if the new file was succesfully created
-        saving_status = exist([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc.nirs'],'file');
+        saving_status = exist([dotNirsPath,filesep,dotNirsFileName,'_nirsplot-proc',dotNirsExt],'file');
         if saving_status
             msgbox('Operation Completed','Success');
         else
