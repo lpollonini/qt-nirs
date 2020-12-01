@@ -153,84 +153,86 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
         
         % Tree selectionChanged function: treeDotNirs
         function treeSelection(app, event)
-            dotNirsFileSel = event.SelectedNodes.Text;
-            app.dotNirsFile = dotNirsFileSel;
-            disp(['Loading: ',app.dotNirsPath,filesep,dotNirsFileSel]);
-            [filepath,name,ext] = fileparts([app.dotNirsPath,filesep,dotNirsFileSel]);
-            switch ext
-                case '.nirs'
-                    app.rawDotNirs = load([app.dotNirsPath,filesep,app.dotNirsFile],'-mat');
-                case '.snirf'
-                    rawsnirf = SnirfClass([app.dotNirsPath,filesep,app.dotNirsFile]);
-                    %app.rawDotNirs.d = rawsnirf.Get_d;
-                    app.rawDotNirs.s = rawsnirf.Get_s;
-                    app.rawDotNirs.t = rawsnirf.Get_t;
-                    app.rawDotNirs.SD = rawsnirf.Get_SD;
-                otherwise
-                    error('The input file should be a .nirs file format');
-            end
-     
-            %[app.sampDur,app.nChannels] = size(app.rawDotNirs.d);
-            app.nChannels = app.nChannels/2;
-            app.nChannels = size(app.rawDotNirs.SD.MeasList,1)/length(unique(app.rawDotNirs.SD.MeasList(:,end)));
-            app.nSources        = size(app.rawDotNirs.SD.SrcPos,1);
-            app.nDetectors      = size(app.rawDotNirs.SD.DetPos,1);
-            app.secDur          = app.rawDotNirs.t(end);
-            app.nSrcLab.Text    = num2str(app.nSources);
-            app.nDetecLab.Text  = num2str(app.nDetectors);
-            app.nChanLab.Text   = num2str(app.nChannels);
-            app.secDurLab.Text  = num2str(app.secDur,'%.2f');
-            
-            % Checking for OD data
-            if isfield(app.rawDotNirs,'procResult')
-               if ~isempty(app.rawDotNirs.procResult.dod)
-                  app.dodCheckBox.Enable = 'on'; 
-               end
-            else
-                app.dodCheckBox.Value = 0;
-                app.dodCheckBox.Enable = 'off';
-            end
-            
-            if ~isfield(app.rawDotNirs,'s')
-                frequency_samp = 1/mean(diff(app.rawDotNirs.t));
-                if isfield(app.rawDotNirs,'StimDesign')
-                    nStim = length(app.rawDotNirs.StimDesign);
-                    sTmp = zeros(size(app.rawDotNirs.d,1),nStim);
-                    for iStim = 1:nStim
-                        sTmp(floor(app.rawDotNirs.StimDesign(iStim).onset * frequency_samp),iStim) = 1;
-                    end
-                    app.rawDotNirs.s = sTmp;
-                    clear sTmp;
-                else
-                    error('Stimuli information is not available.');
+            if isempty(event.SelectedNodes.Children) %Is it a leaf (file)?
+                dotNirsFileSel = event.SelectedNodes.Text;
+                app.dotNirsFile = dotNirsFileSel;
+                disp(['Loading: ',app.dotNirsPath,filesep,dotNirsFileSel]);
+                [filepath,name,ext] = fileparts([app.dotNirsPath,filesep,dotNirsFileSel]);
+                switch ext
+                    case '.nirs'
+                        app.rawDotNirs = load([app.dotNirsPath,filesep,app.dotNirsFile],'-mat');
+                    case '.snirf'
+                        rawsnirf = SnirfClass([app.dotNirsPath,filesep,app.dotNirsFile]);
+                        %app.rawDotNirs.d = rawsnirf.Get_d;
+                        app.rawDotNirs.s = rawsnirf.Get_s;
+                        app.rawDotNirs.t = rawsnirf.Get_t;
+                        app.rawDotNirs.SD = rawsnirf.Get_SD;
+                    otherwise
+                        error('The input file should be a .nirs file format');
                 end
-            end
-            
-            % Create StimuliSelectionBoxes
-            xOffset = 14;
-            yOffset = 145;
-            app.nCond = size(app.rawDotNirs.s,2);
-            app.condCheckBoxes.delete;
-            % 'Resting' option
-            app.condCheckBoxes(1) = uicheckbox(app.NIRSPlotGUIUIFigure);
+                
+                %[app.sampDur,app.nChannels] = size(app.rawDotNirs.d);
+                app.nChannels = app.nChannels/2;
+                app.nChannels = size(app.rawDotNirs.SD.MeasList,1)/length(unique(app.rawDotNirs.SD.MeasList(:,end)));
+                app.nSources        = size(app.rawDotNirs.SD.SrcPos,1);
+                app.nDetectors      = size(app.rawDotNirs.SD.DetPos,1);
+                app.secDur          = app.rawDotNirs.t(end);
+                app.nSrcLab.Text    = num2str(app.nSources);
+                app.nDetecLab.Text  = num2str(app.nDetectors);
+                app.nChanLab.Text   = num2str(app.nChannels);
+                app.secDurLab.Text  = num2str(app.secDur,'%.2f');
+                
+                % Checking for OD data
+                if isfield(app.rawDotNirs,'procResult')
+                    if ~isempty(app.rawDotNirs.procResult.dod)
+                        app.dodCheckBox.Enable = 'on';
+                    end
+                else
+                    app.dodCheckBox.Value = 0;
+                    app.dodCheckBox.Enable = 'off';
+                end
+                
+                if ~isfield(app.rawDotNirs,'s')
+                    frequency_samp = 1/mean(diff(app.rawDotNirs.t));
+                    if isfield(app.rawDotNirs,'StimDesign')
+                        nStim = length(app.rawDotNirs.StimDesign);
+                        sTmp = zeros(size(app.rawDotNirs.d,1),nStim);
+                        for iStim = 1:nStim
+                            sTmp(floor(app.rawDotNirs.StimDesign(iStim).onset * frequency_samp),iStim) = 1;
+                        end
+                        app.rawDotNirs.s = sTmp;
+                        clear sTmp;
+                    else
+                        error('Stimuli information is not available.');
+                    end
+                end
+                
+                % Create StimuliSelectionBoxes
+                xOffset = 14;
+                yOffset = 145;
+                app.nCond = size(app.rawDotNirs.s,2);
+                app.condCheckBoxes.delete;
+                % 'Resting' option
+                app.condCheckBoxes(1) = uicheckbox(app.NIRSPlotGUIUIFigure);
                 app.condCheckBoxes(1).Position =[xOffset,yOffset,...
                     60, 15];
                 app.condCheckBoxes(1).Value = 1;
                 app.condCheckBoxes(1).Text = 'Resting';
                 xOffset = xOffset + 80;
                 
-            for iCB=2:(app.nCond +1)
-                app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
-                app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
-                    35, 15];
-                app.condCheckBoxes(iCB).Value = 1;
-                app.condCheckBoxes(iCB).Text = num2str(iCB);
-                mod_ = mod(iCB,5);
-                if mod_ == 0
-                    yOffset = yOffset - 25;
-                    xOffset = 14;
-                else
-                    xOffset = xOffset+40;
+                for iCB=2:(app.nCond +1)
+                    app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
+                    app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
+                        35, 15];
+                    app.condCheckBoxes(iCB).Value = 1;
+                    app.condCheckBoxes(iCB).Text = num2str(iCB);
+                    mod_ = mod(iCB,5);
+                    if mod_ == 0
+                        yOffset = yOffset - 25;
+                        xOffset = 14;
+                    else
+                        xOffset = xOffset+40;
+                    end
                 end
             end
         end

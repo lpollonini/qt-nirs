@@ -68,7 +68,7 @@ function quality_matrices = nirsplot(dotNirsFilePath,varargin)
 % MeasListAct: Array mask of the channels achieving the required level of quality (length: #Channels X #WLs)
 
 if nargin < 1
-    nirsplotLoadFileGUI();
+    nirsplotLoadFileGUI(pwd);
     return;
 end
 
@@ -240,7 +240,7 @@ if ~exist('dodFlag_','var')
     dodFlag_ = -1;
 end
 if ~exist('guiFlag_','var')
-    guiFlag_ = 0;
+    guiFlag_ = 1;
 end
 
 %------ Sorting for nirstoolbox compatibility ------
