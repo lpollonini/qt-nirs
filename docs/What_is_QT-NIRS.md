@@ -5,3 +5,26 @@
 ## Advantages 
 
 Vendor tools aimed to the quality assurance rely on the calibration process to enhance the *signal-to-noise ratio* (SNR). This process optimizes the fNIRS optodes gain at the beginning of the data collection. However, the optodes-scalp coupling is likely to change as the subject goes through the experimental tasks.
+
+# Download and installation
+
+## Requirements
+
+
+
+# Example of use
+
+
+
+# Advanced mode
+
+
+
+# Integration with Homer and Brain AnalayzIR
+
+
+
+# Citation
+
+
+
