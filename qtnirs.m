@@ -1,11 +1,11 @@
-function quality_matrices = nirsplot(dotNirsFilePath,varargin)
-% NIRSPLOT is a Matlab-based tool for the quality assessment of fNIRS data. 
-% Nirsplot can quantify the quality of an fNIRS recording in two different ways, by using a GUI or through a function call.
-% Graphically, the Nirsplot GUI allows the user to locate a working folder for processing and quantifying the .nirs files within the working folder. 
-% Programmatically, the users also can retrieve a set of quality measures by calling nirsplot from a Matlab script. 
+function quality_matrices = qtnirs(dotNirsFilePath,varargin)
+% QT-NIRS is a Matlab-based tool for the quality assessment of fNIRS data. 
+% QT-NIRS can quantify the quality of an fNIRS recording in two different ways, by using a GUI or through a function call.
+% Graphically, the QTNIRS GUI allows the user to locate a working folder for processing and quantifying the .nirs files within the working folder. 
+% Programmatically, the users also can retrieve a set of quality measures by calling qtnirs from a Matlab script. 
 %
 % Usage information
-% Using Nirsplot inside of a script allows the users to specify a set of 
+% Using QT-NIRS inside of a script allows the users to specify a set of 
 % parameters for the quality assessment. The 'dotNirsFilePath' parameter 
 % can be the path of a .nirs file or the path to a folder containing 
 % several .nirs files or a struct containing:
@@ -35,13 +35,13 @@ function quality_matrices = nirsplot(dotNirsFilePath,varargin)
 
 %
 % 
-% An example of Nirsplot usage is:
+% An example of QT-NIRS usage is:
 % 
 % bpFmin = 0.5; bpFmax = 2.5;
 % windowSec = 5;
 % windowOverlap = 0;
 % quality_threshold = 0.9;
-% qualityMatrices = nirsplot([pwd,filesep,'tmpDotNirs.nirs'],...
+% qualityMatrices = qtnirs([pwd,filesep,'tmpDotNirs.nirs'],...
 %                 'freqCut',[bpFmin, bpFmax],...
 %                 'window',windowSec,...
 %                 'overlap',windowOverlap,....
@@ -68,7 +68,7 @@ function quality_matrices = nirsplot(dotNirsFilePath,varargin)
 % MeasListAct: Array mask of the channels achieving the required level of quality (length: #Channels X #WLs)
 
 if nargin < 1
-    nirsplotLoadFileGUI(pwd);
+    qtnirsLoadFileGUI(pwd);
     return;
 end
 
@@ -97,7 +97,7 @@ if ischar(dotNirsFilePath)
     elseif isfolder(dotNirsFilePath)
         disp(['The input data is a folder. ',...
             'All .nirs files inside ',dotNirsFilePath,' will be evaluated.']);
-        nirsplotLoadFileGUI(dotNirsFilePath);
+        qtnirsLoadFileGUI(dotNirsFilePath);
         return;
     else
         error('The input path does not exist.');
@@ -313,7 +313,7 @@ nirsplot_parameters.guiFlag = guiFlag_;
 % Call the GUI for parameter inputs
 S=dbstack;
 if length(S)== 1 && guiFlag_ == 1
-    nirsplotLoadFileGUI(nirsplot_parameters)
+    qtnirsLoadFileGUI(nirsplot_parameters)
 end
 report_table = [];
 

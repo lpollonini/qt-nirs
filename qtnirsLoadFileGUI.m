@@ -1,4 +1,4 @@
-classdef nirsplotLoadFileGUI < matlab.apps.AppBase
+classdef qtnirsLoadFileGUI < matlab.apps.AppBase
     
     % Properties that correspond to app components
     properties (Access = public)
@@ -225,8 +225,8 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                     app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
                         35, 15];
                     app.condCheckBoxes(iCB).Value = 1;
-                    app.condCheckBoxes(iCB).Text = num2str(iCB);
-                    mod_ = mod(iCB,5);
+                    app.condCheckBoxes(iCB).Text = num2str(iCB-1);
+                    mod_ = mod(iCB,4);
                     if mod_ == 0
                         yOffset = yOffset - 25;
                         xOffset = 14;
@@ -289,11 +289,11 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
                 app.condMask = 'resting';
             else
                 for iCB=1:app.nCond
-                    app.condMask(iCB) = logical(app.condCheckBoxes(iCB).Value);
+                    app.condMask(iCB) = logical(app.condCheckBoxes(iCB+1).Value);
                 end
             end
             
-            app.reportTable = nirsplot([app.dotNirsPath,filesep,app.dotNirsFile],...
+            app.reportTable = qtnirs([app.dotNirsPath,filesep,app.dotNirsFile],...
                 'freqCut',[app.bpFmin, app.bpFmax],...
                 'window',app.windowSec,...
                 'overlap',app.windowOverlap,....
@@ -493,7 +493,7 @@ classdef nirsplotLoadFileGUI < matlab.apps.AppBase
     methods (Access = public)
         
         % Construct app
-        function app = nirsplotLoadFileGUI(varargin)
+        function app = qtnirsLoadFileGUI(varargin)
             
             % Create UIFigure and components
             createComponents(app)
