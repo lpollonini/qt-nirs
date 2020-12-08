@@ -216,7 +216,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 app.condCheckBoxes(1) = uicheckbox(app.NIRSPlotGUIUIFigure);
                 app.condCheckBoxes(1).Position =[xOffset,yOffset,...
                     60, 15];
-                app.condCheckBoxes(1).Value = 1;
+                app.condCheckBoxes(1).Value = 0;
                 app.condCheckBoxes(1).Text = 'Resting';
                 xOffset = xOffset + 80;
                 
@@ -311,8 +311,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         function createComponents(app)
             w.height = 700;
             w.width = 234;
-            w.x = 50;
-            w.y = 50;
+            w.x = 150;
+            w.y = 250;
             
             uicomp = zeros(0,4);
             % Create NIRSPlotGUIUIFigure and hide until all components are created

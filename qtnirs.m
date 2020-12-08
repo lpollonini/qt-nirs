@@ -362,7 +362,7 @@ end
     function [main_fig_axes,main_fig] = createGUI()
         
         % Main figure container
-        pos.main = [0.125 0.05 0.75 0.85]; % left, bottom, width, height
+        pos.main = [0.20 0.05 0.75 0.85]; % left, bottom, width, height
         main_fig = figure('Units','normalized',...
             'Position',pos.main,'Visible','off',...
             'Name','QT-NIRS','NumberTitle','off','MenuBar','none','Toolbar','figure');
