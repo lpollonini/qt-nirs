@@ -215,6 +215,26 @@ while length(propertyArgIn) >= 2
             end
     end
 end
+frequency_samp = 1/mean(diff(rawNirs.t));
+% Creating 's' variable (stimuli matrix) from the information in StimDesign
+if ~isfield(rawNirs,'s')
+    if isfield(rawNirs,'StimDesign')
+        nStim = length(rawNirs.StimDesign);
+        sTmp = zeros(size(rawNirs.d,1),nStim);
+        for iStim = 1:nStim
+            for iOnset=1:length(rawNirs.StimDesign(iStim).onset)
+                onsetTmp = floor(rawNirs.StimDesign(iStim).onset(iOnset) * frequency_samp);
+                durTmp = floor(rawNirs.StimDesign(iStim).dur(iOnset)* frequency_samp);
+                %sTmp(floor(rawNirs.StimDesign(iStim).onset(iOnset) * frequency_samp),iStim) = 1;
+                sTmp(onsetTmp:(onsetTmp+durTmp),iStim) = 1;
+            end
+        end
+        rawNirs.s = sTmp;
+        clear sTmp;
+    else
+        error('Stimuli information is not available.');
+    end
+end
 
 if ~exist('fcut_','var')
     fcut_ = [0.5 2.5];
@@ -259,30 +279,6 @@ if dodFlag_ == 1
     rawNirs.procResult.dod = rawNirs.procResult.dod(:,idxML);
 end
 %---------------------------------------------------
-
-frequency_samp = 1/mean(diff(rawNirs.t));
-% Creating 's' variable (stimuli matrix) from the information in StimDesign
-if ~isfield(rawNirs,'s')
-    if isfield(rawNirs,'StimDesign')
-        nStim = length(rawNirs.StimDesign);
-        sTmp = zeros(size(rawNirs.d,1),nStim);
-        for iStim = 1:nStim
-            for iOnset=1:length(rawNirs.StimDesign(iStim).onset)
-                onsetTmp = floor(rawNirs.StimDesign(iStim).onset(iOnset) * frequency_samp);
-                durTmp = floor(rawNirs.StimDesign(iStim).dur(iOnset)* frequency_samp);
-                %sTmp(floor(rawNirs.StimDesign(iStim).onset(iOnset) * frequency_samp),iStim) = 1;
-                sTmp(onsetTmp:(onsetTmp+durTmp),iStim) = 1;
-            end
-        end
-        rawNirs.s = sTmp;
-        clear sTmp;
-    else
-        error('Stimuli information is not available.');
-    end
-end
-
-
-
 
 nirsplot_parameters.dotNirsPath = filepath;
 nirsplot_parameters.dotNirsFile = name;
