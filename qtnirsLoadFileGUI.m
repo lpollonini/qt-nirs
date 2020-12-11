@@ -33,6 +33,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         treeDotNirs             matlab.ui.container.Tree
         treeNodesDotNirs        matlab.ui.container.TreeNode
         dodCheckBox             matlab.ui.control.CheckBox
+        wlLabel                 matlab.ui.control.Label
+        wlCheckBoxes        matlab.ui.control.CheckBox
 
     end
     
@@ -55,8 +57,10 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         reportTable % Quality output table report
         quality_threshold % Minimum required quality for channels
         condMask % Binary mask for selecting the conditions of interest
+        lambdaMask % Binary mask for selection the WLs to be used for computing quality metrics.
         dotNirsPath % Path of the .nirs file to analyze
         dotNirsFile % Path of the .nirs file to analyze
+        nlambda     % Number of WLs in the scan file
     end
     
     
@@ -170,10 +174,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                     otherwise
                         error('The input file should be a .nirs file format');
                 end
-                
-                %[app.sampDur,app.nChannels] = size(app.rawDotNirs.d);
-                app.nChannels = app.nChannels/2;
-                app.nChannels = size(app.rawDotNirs.SD.MeasList,1)/length(unique(app.rawDotNirs.SD.MeasList(:,end)));
+                app.nlambda         = length(app.rawDotNirs.SD.Lambda);
+                app.nChannels       = size(app.rawDotNirs.SD.MeasList,1)/app.nlambda;
                 app.nSources        = size(app.rawDotNirs.SD.SrcPos,1);
                 app.nDetectors      = size(app.rawDotNirs.SD.DetPos,1);
                 app.secDur          = app.rawDotNirs.t(end);
@@ -234,6 +236,31 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                         xOffset = xOffset+40;
                     end
                 end
+                
+                % Checking the number of WLs, if more than two, allow the
+                % user to select two of them              
+                if app.nlambda > 2
+                    app.wlLabel.Visible = 'on';
+                    xOffset = 54;
+                    yOffset = 405;
+                    for iCB=1:app.nlambda
+                        app.wlCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
+                        app.wlCheckBoxes(iCB).Position =[xOffset,yOffset,...
+                            45, 15];
+                        app.wlCheckBoxes(iCB).Value = 0;
+                        app.wlCheckBoxes(iCB).Text = num2str(app.rawDotNirs.SD.Lambda(iCB));
+                        mod_ = mod(iCB,4);
+                        if mod_ == 0
+                            yOffset = yOffset - 25;
+                            xOffset = 14;
+                        else
+                            xOffset = xOffset+45;
+                        end
+                    end
+                else
+                     app.wlLabel.Visible = 'off';
+                     app.wlCheckBoxes.delete;
+                end
             end
         end
         
@@ -293,6 +320,14 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 end
             end
             
+            if isvalid(app.wlCheckBoxes)
+               for iCB=1:app.nlambda
+                  app.lambdaMask(iCB) = app.wlCheckBoxes(iCB).Value; 
+               end
+            else
+                app.lambdaMask = [1 1];
+            end
+            
             app.reportTable = qtnirs([app.dotNirsPath,filesep,app.dotNirsFile],...
                 'freqCut',[app.bpFmin, app.bpFmax],...
                 'window',app.windowSec,...
@@ -300,7 +335,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 'qualityThreshold',app.quality_threshold,...
                 'conditionsMask',app.condMask,...
                 'dodFlag',app.dodCheckBox.Value,...
-                'guiFlag',1);
+                'guiFlag',1,...
+                'lambdaMask',app.lambdaMask);
         end
     end
     
@@ -312,7 +348,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             w.height = 700;
             w.width = 234;
             w.x = 150;
-            w.y = 250;
+            w.y = 50;
             
             uicomp = zeros(0,4);
             % Create NIRSPlotGUIUIFigure and hide until all components are created
@@ -332,11 +368,11 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             app.NIRSPlotLabel.Text = 'QT-NIRS';
             
             % Create nirsfileEditFieldLabel
-            uicomp(2,:) = [24 530 50 uicomp(1,4)];
+            uicomp(2,:) = [24 530 60 uicomp(1,4)];
             app.nirsfileEditFieldLabel = uilabel(app.NIRSPlotGUIUIFigure);
             app.nirsfileEditFieldLabel.HorizontalAlignment = 'right';
             app.nirsfileEditFieldLabel.Position = uicomp(2,:);
-            app.nirsfileEditFieldLabel.Text = '.nirs files';
+            app.nirsfileEditFieldLabel.Text = '.nirs .snirf';
             
             % Create tree
             uicomp(2,:) = [24 550 200 120];
@@ -375,8 +411,14 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             
             % Create DurLabel
             app.DurLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.DurLabel.Position = [24 425 32 22];
-            app.DurLabel.Text = 'Time';
+            app.DurLabel.Position = [24 425 42 22];
+            app.DurLabel.Text = 'Time(s)';
+            
+            % Create WLlabel
+            app.wlLabel = uilabel(app.NIRSPlotGUIUIFigure);
+            app.wlLabel.Position = [24 405 42 22];
+            app.wlLabel.Text = 'WL';
+            app.wlLabel.Visible = 'off';
             
             % Create nSrcLab
             app.nSrcLab = uilabel(app.NIRSPlotGUIUIFigure);
@@ -400,29 +442,29 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             
             % Create CutoffFrequencyLabel
             app.CutoffFrequencyLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.CutoffFrequencyLabel.Position = [69 395 97 22];
+            app.CutoffFrequencyLabel.Position = [69 370 97 22];
             app.CutoffFrequencyLabel.Text = 'Cutoff Frequency';
             
             % Create FreqMinEditFieldLabel
             app.FreqMinEditFieldLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.FreqMinEditFieldLabel.HorizontalAlignment = 'right';
-            app.FreqMinEditFieldLabel.Position = [24 365 60 22];
-            app.FreqMinEditFieldLabel.Text = 'Freq. Min.';
+            app.FreqMinEditFieldLabel.HorizontalAlignment = 'left';
+            app.FreqMinEditFieldLabel.Position = [24 340 30 22];
+            app.FreqMinEditFieldLabel.Text = 'Min.';
             
             % Create FreqMinEditField
             app.FreqMinEditField = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
-            app.FreqMinEditField.Position = [99 365 50 22];
+            app.FreqMinEditField.Position = [54 340 40 22];
             app.FreqMinEditField.Value = 0.5;
             
             % Create FreqMaxEditFieldLabel
             app.FreqMaxEditFieldLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.FreqMaxEditFieldLabel.HorizontalAlignment = 'right';
-            app.FreqMaxEditFieldLabel.Position = [24 340 63 22];
-            app.FreqMaxEditFieldLabel.Text = 'Freq. Max.';
+            app.FreqMaxEditFieldLabel.HorizontalAlignment = 'left';
+            app.FreqMaxEditFieldLabel.Position = [124 340 30 22];
+            app.FreqMaxEditFieldLabel.Text = 'Max.';
             
             % Create FreqMaxEditField
             app.FreqMaxEditField = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
-            app.FreqMaxEditField.Position = [99 340 50 22];
+            app.FreqMaxEditField.Position = [155 340 40 22];
             app.FreqMaxEditField.Value = 2.5;
             
             % Create WindowLabel
@@ -442,8 +484,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             
             % Create OverlappingLabel
             app.OverlappingLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.OverlappingLabel.Position = [18 240 70 28];
-            app.OverlappingLabel.Text = {'Overlapping'; '(%)'};
+            app.OverlappingLabel.Position = [24 240 70 28];
+            app.OverlappingLabel.Text = {'Overlapping'};
             
             % Create WindowsoverlapSlider
 %             app.WindowsoverlapSlider = uislider(app.NIRSPlotGUIUIFigure);
@@ -457,14 +499,14 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             % Create dodCheckBox
             app.WindowsOverlapCtrl = uicheckbox(app.NIRSPlotGUIUIFigure);
             app.WindowsOverlapCtrl.Value = 0;
-            app.WindowsOverlapCtrl.Text = 'Overlap';
-            app.WindowsOverlapCtrl.Position = [99 245 70 22];
+            app.WindowsOverlapCtrl.Text = '';
+            app.WindowsOverlapCtrl.Position = [99 240 70 22];
             app.WindowsOverlapCtrl.Enable = 'on';
             
             % Create QualityThresholdLabel
             app.QualityThresholdLabel = uilabel(app.NIRSPlotGUIUIFigure);
             app.QualityThresholdLabel.HorizontalAlignment = 'left';
-            app.QualityThresholdLabel.Position = [16 195 80 28];
+            app.QualityThresholdLabel.Position = [24 195 80 28];
             app.QualityThresholdLabel.Text = {'Quality'; '(0-100)'};
             
             % Create QualityThresholdField

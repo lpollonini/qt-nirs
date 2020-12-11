@@ -43,7 +43,8 @@ classdef bpGoodQuality < matlab.apps.AppBase
             app.barPlot.XLim = [0,1];
             %app.barPlot.YTick = round(linspace(1,size(app.good_combo_link,1),5));
             app.barPlot.YTick = 1:size(app.good_combo_link,1);
-            app.barPlot.YTickLabel = num2cell([num2str(app.raw.SD.MeasList(1:2:end,1)),repmat('-',app.nirsplot_param.n_channels,1),num2str(app.raw.SD.MeasList(1:2:end,2))],2);     
+            % Bug found by Benjamin Zinszer (miscalculation in the number of channels)
+            app.barPlot.YTickLabel = num2cell([num2str(app.raw.SD.MeasList(1:length(app.raw.SD.Lambda):end,1)),repmat('-',app.nirsplot_param.n_channels,1),num2str(app.raw.SD.MeasList(1:length(app.raw.SD.Lambda):end,2))],2);     
             %app.barPlot.YTickLabel = flipud(app.barPlot.YTickLabel);
             app.thldLn = xline(app.barPlot,app.qThld,'--r');
             app.ThresholdSlider.Value = round(app.qThld*100);

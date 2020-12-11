@@ -67,10 +67,26 @@ function quality_matrices = qtnirs(dotNirsFilePath,varargin)
 % woi: Data structure cointaining the Windows of Interest information (epochs of interest throughout the recording)
 % MeasListAct: Array mask of the channels achieving the required level of quality (length: #Channels X #WLs)
 
-if nargin < 1
-    qtnirsLoadFileGUI(pwd);
-    return;
-end
+% REMOVE THE .git FOLDERS 
+% qtpath = mfilename('fullpath');
+% qtpath = qtpath(1:strfind(qtpath,[filesep 'qtnirs']));
+% pathCell = regexp(path, pathsep, 'split');
+% if ispc  % Windows is not case-sensitive
+%   onPath = any(strcmpi(qtpath, pathCell));
+% else
+%   onPath = any(strcmp(qtpath, pathCell));
+% end
+% %cd(qtpath(1:end-7))
+% % Add that folder plus all subfolders to the path.
+% %addpath(pwd);
+% if ~onPath
+%     addpath(genpath(qtpath));
+% end
+% 
+% if nargin < 1
+%     qtnirsLoadFileGUI(pwd);
+%     return;
+% end
 
 if ischar(dotNirsFilePath)
     if isfile(dotNirsFilePath)
@@ -173,40 +189,55 @@ while length(propertyArgIn) >= 2
                     case 'resting'
                         cond_mask = val;
                     otherwise
-                        warning(["Value ",val," in 'cond_mask' parameter not valid."...
-                            "Using the complete scan time."]);
+                        warning(['Value ',val,' in "cond_mask" parameter not valid.',...
+                            'Using the complete scan time.']);
                         cond_mask = 'resting';
                 end
             elseif isnumeric(val)
                 if ~(any(val>1 | val<0))
                     cond_mask = val;
                 else
-                    warning(["Value ",val," not valid, use only binary values (0/1)."...
-                        "Using the complete scan time."]);
+                    warning(['Value ',num2str(val),' not valid, use only binary values (0/1).',...
+                        'Using the complete scan time.']);
                     cond_mask = 'resting';                    
                 end
             end
             
         case 'lambdaMask'
-            if (ischar(val) && strcmp(val,'all')) || ~(any(val>1 | val<0))
-                lambda_mask_ = val;
+            errFlag = false;
+            if ~(any(val>1 | val<0))                
+                if length(val) ~= length(rawNirs.SD.Lambda)
+                    warning(['The number of elements in the "lambdaMask" mask',...
+                    ' does not match with the number of WLs in the scan.',...
+                    ' Using the first two WLs.']);
+                    errFlag = true;
+                end
+                if sum(val)~=2
+                   warning(['Incorrect number of "1" in the "lambdaMask" mask.',...
+                       ' Set ONLY two vaules to "1". Using the first two WLs.']);
+                   errFlag = true;
+                end
+                if ~errFlag 
+                    lambda_mask_ = logical(val);           
+                    lambdas_ = find(lambda_mask_);
+                end
+            else
+                 warning(['Elements in the "lambdaMask" mask',...
+                    ' must be "1" and/or "0". Using the first two WLs.']);
             end
             
         case 'dodFlag'
-            if isfield(rawNirs,'procResult')
-                if ~isempty(rawNirs.procResult.dod)
-                    if val == 1
-                        dodFlag_ = 1;
-                    else
-                        dodFlag_ = 0;
-                    end
+            if val == 1
+                if isfield(rawNirs,'procResult') && ~isempty(rawNirs.procResult.dod)
+                    dodFlag_ = 1;
                 else
                     dodFlag_ = 0;
+                    warning('OD data is not available, I will use the raw data.');                
                 end
             else
-                warning('OD data is not available, I will use the raw data.');
-                dodFlag_ = -1;
-            end
+                dodFlag_ = 0;
+            end                
+
     case 'guiFlag'
             if val == 1
                 guiFlag_ = 1;
@@ -253,8 +284,14 @@ if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
     cond_mask = ones(1,size(rawNirs.s,2));
 end
 if ~exist('lambda_mask_','var')
-    lambdas_ = unique(rawNirs.SD.MeasList(:,4));
-    lambda_mask_ = ones(length(lambdas_),1);
+    lambdas_ = unique(rawNirs.SD.MeasList(:,4))';
+    lambdas_ = lambdas_(1:2);
+    lambda_mask_ = true(1,length(lambdas_));
+    if length(lambda_mask_) ~= length(rawNirs.SD.Lambda)
+        for ii=3:length(rawNirs.SD.Lambda)
+            lambda_mask_(end+1) = 0;
+        end
+    end
 end
 if ~exist('dodFlag_','var')
     dodFlag_ = -1;
@@ -291,7 +328,8 @@ nirsplot_parameters.lambdas = lambdas_;
 nirsplot_parameters.dodFlag = dodFlag_;
 nirsplot_parameters.mergewoi_flag = true;
 nirsplot_parameters.quality_threshold = q_threshold;
-nirsplot_parameters.n_channels = size(rawNirs.d,2)/2;
+% Bug found by Benjamin Zinszer (miscalculation in the number of channels)
+nirsplot_parameters.n_channels = size(rawNirs.d,2)/length(rawNirs.SD.Lambda);
 nirsplot_parameters.n_sources = size(rawNirs.SD.SrcPos,1);
 nirsplot_parameters.n_detectors = size(rawNirs.SD.DetPos,1);
 nirsplot_parameters.s = rawNirs.s;
@@ -415,9 +453,9 @@ end
         
         pos.helpBtn = [pos.inspectBtn(1)+pos.inspectBtn(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.05,pos.inspectBtn(4)];
-        uicontrol(main_fig,'Style','pushbutton','String','?',...
-            'FontSize',12,'FontWeight','bold','Units','normalized','Position',...
-            pos.helpBtn,'Callback', @showHelp,'Tag','helpBtn');
+%         uicontrol(main_fig,'Style','pushbutton','String','?',...
+%             'FontSize',12,'FontWeight','bold','Units','normalized','Position',...
+%             pos.helpBtn,'Callback', @showHelp,'Tag','helpBtn');
         
         pos.chSelBtn = [pos.helpBtn(1)+pos.helpBtn(3)+myAxDim.xSep,...
             pos.inspectBtn(2),0.15,pos.inspectBtn(4)];
@@ -685,7 +723,7 @@ end
             myAxes.combo.YLabel.FontWeight = 'bold';
             % For figures MAs detected/undetected             
              myAxes.combo.YAxis.TickValues = 1:n_channels;
-             myAxes.combo.YAxis.TickLabels = num2cell([num2str(raw.SD.MeasList(1:2:end,1)),repmat('-',n_channels,1),num2str(raw.SD.MeasList(1:2:end,2))],2);            
+             myAxes.combo.YAxis.TickLabels = num2cell([num2str(raw.SD.MeasList(1:length(raw.SD.Lambda):end,1)),repmat('-',n_channels,1),num2str(raw.SD.MeasList(1:length(raw.SD.Lambda):end,2))],2);            
              myAxes.combo.YAxis.FontSize = 7;
             
             hold(myAxes.sci,'on');
@@ -775,6 +813,7 @@ end
 
 %% -------------------------------------------------------------------------
     function updateIPlot(source,iChannel,xLimWindow,iWindow,s,t)
+        disp(['channel:' num2str(iChannel)]);
         raw = getappdata(source.Parent,'rawNirs');
         nirsplot_param = getappdata(source.Parent,'nirsplot_parameters');
         qMats = nirsplot_param.quality_matrices;
@@ -811,7 +850,7 @@ end
             cardiac_wl2_norm,'-r');
         
         if(isfield(raw.SD,'Lambda'))
-             WLs = raw.SD.Lambda;
+             WLs = raw.SD.Lambda(nirsplot_param.lambda_mask);
             strLgnds = {num2str(WLs(1)),num2str(WLs(2))};
         else
             strLgnds = {'\lambda 1','\lambda 2'};
@@ -903,7 +942,7 @@ end
         myAxes.inspector.YLim = YLimStd;
         myAxes.inspector.XLim = XLimStd;
         %myAxes.inspector.YLabel.String = ['Channel ', num2str(iChannel)];
-        myAxes.inspector.YLabel.String = ['S', num2str(raw.SD.MeasList(iChannel*2,1)),'-D',num2str(raw.SD.MeasList(iChannel*2,2)),'(',num2str(iChannel),')'];
+        myAxes.inspector.YLabel.String = ['S', num2str(raw.SD.MeasList(iChannel*length(raw.SD.Lambda),1)),'-D',num2str(raw.SD.MeasList(iChannel*length(raw.SD.Lambda),2)),'(',num2str(iChannel),')'];
         
         lgn = legend(myAxes.inspector,strLgnds,'Box','off','FontSize',10);
         
@@ -950,10 +989,10 @@ end
         [B1,A1]=butter(1,[fcut_min*(2/fs) fcut_max*(2/fs)]);
         
         nirs_data = zeros(length(lambdas),n_samples,n_channels);
-        cardiac_data = zeros(length(lambdas),n_samples,n_channels); % Lambdas x time x channels
-        for j = 1:length(lambdas)
+        cardiac_data = zeros(length(raw.SD.Lambda),n_samples,n_channels); % Lambdas x time x channels
+        for j = 1:length(raw.SD.Lambda)
             % Filter everything but the cardiac component
-            idx = find(raw.SD.MeasList(:,4) == lambdas(j));
+            idx = find(raw.SD.MeasList(:,4) == j);
             nirs_data(j,:,:) = raw.d(:,idx);
             filtered_nirs_data=filtfilt(B1,A1,squeeze(nirs_data(j,:,:)));
             cardiac_data(j,:,:)=filtered_nirs_data./repmat(std(filtered_nirs_data,0,1),size(filtered_nirs_data,1),1); % Normalized heartbeat
@@ -1080,9 +1119,10 @@ end
         qualityMats.fs = fs;
         qualityMats.n_windows = n_windows;
         qualityMats.overlap_samples = overlap_samples;
-        qualityMats.cardiac_data = cardiac_data;
-        qualityMats.good_combo_link = [raw.SD.MeasList(1:2:end,1),...
-            raw.SD.MeasList(1:2:end,2),good_combo_link];
+        qualityMats.cardiac_data = cardiac_data; 
+        % Bug found by Benjamin Zinszer (miscalculation in the S-D pairs)
+        qualityMats.good_combo_link = [raw.SD.MeasList(1:length(raw.SD.Lambda):end,1),...
+            raw.SD.MeasList(1:length(raw.SD.Lambda):end,2),good_combo_link];
         qualityMats.good_combo_window = good_combo_window;
         qualityMats.woi = woi;
         qualityMats.allowed_samp = allowed_samp;
