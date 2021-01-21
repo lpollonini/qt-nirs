@@ -177,11 +177,15 @@ while length(propertyArgIn) >= 2
             if isfloat(val) && val >= 0 && val <= 1
                 q_threshold = val;
             end
-            
-        case 'conditionsMask'
-%             if (ischar(val) && strcmp(val,'all')) || ~(any(val>1 | val<0))
-%                 cond_mask = val;
-%             end           
+        case 'sciThreshold'
+            if isfloat(val) && val >= 0 && val <= 1
+                sci_threshold = val;
+            end
+        case 'pspThreshold'
+            if isfloat(val) && val >= 0 && val <= 1
+                psp_threshold = val;
+            end
+        case 'conditionsMask'          
             if ischar(val)
                 switch val
                     case 'all'
@@ -280,6 +284,12 @@ end
 if ~exist('q_threshold','var')
     q_threshold = 0.75;
 end
+if ~exist('sci_threshold','var')
+    sci_threshold = 0.8;
+end
+if ~exist('psp_threshold','var')
+    psp_threshold = 0.1;
+end
 if ~exist('cond_mask','var') || strcmp(cond_mask,'all')
     cond_mask = ones(1,size(rawNirs.s,2));
 end
@@ -328,6 +338,8 @@ nirsplot_parameters.lambdas = lambdas_;
 nirsplot_parameters.dodFlag = dodFlag_;
 nirsplot_parameters.mergewoi_flag = true;
 nirsplot_parameters.quality_threshold = q_threshold;
+nirsplot_parameters.sci_threshold = sci_threshold;
+nirsplot_parameters.psp_threshold = psp_threshold;
 % Bug found by Benjamin Zinszer (miscalculation in the number of channels)
 nirsplot_parameters.n_channels = size(rawNirs.d,2)/length(rawNirs.SD.Lambda);
 nirsplot_parameters.n_sources = size(rawNirs.SD.SrcPos,1);
@@ -604,7 +616,10 @@ end
         woi = nirsplot_param.quality_matrices.woi;
         sclAlpha = nirsplot_param.sclAlpha;
         window_time = nirsplot_param.window;
+        sciThrld = nirsplot_param.sci_threshold;
+        pspThrld = nirsplot_param.psp_threshold;
         raw = getappdata(source.Parent,'rawNirs');
+
 
         %Unpacking
         sci_array = qMats.sci_array;
@@ -624,11 +639,9 @@ end
         n_windows_ = (length(raw.t)-overlap_samples_)/(window_samples_-overlap_samples_);
         colorb_sci = findobj('Tag','colorb_sci');
         if advancedView
-            % WE USE OPTION 1, BUT ONLY NEED TO "EXTEND" THE COMBO VIEW
-            sci_threshold = 0.8;
-            sci_mask = sci_array>=sci_threshold;
-            power_threshold = 0.1;
-            power_mask = power_array>=power_threshold;
+            % WE USE OPTION 1, BUT ONLY NEED TO "EXTEND" THE COMBO VIEW           
+            sci_mask = sci_array>=sciThrld;
+            power_mask = power_array>=pspThrld;
             qualityColor = [0 0 0; 0.6 0.6 0.6; 1 1 1];
             % Scalp Contact Index
             %cla(myAxes.sci)
@@ -738,8 +751,7 @@ end
             imagesc(myAxes.combo,woiMatrgb,'AlphaData',alphaMat);
         else
             % Scalp Contact Index
-            sci_threshold = 0.8;
-            sci_mask = sci_array>=sci_threshold;
+            sci_mask = sci_array>=sciThrld;
             
             %cla(myAxes.sci);
             imagesc(myAxes.sci,sci_mask);
@@ -766,8 +778,7 @@ end
             myAxes.sci.YLabel.FontWeight = 'bold';
 
             % Power peak
-            power_threshold = 0.1;
-            power_mask = power_array>=power_threshold;
+            power_mask = power_array>=pspThrld;
             imagesc(myAxes.power,power_mask);
             myAxes.power.CLim = [0, 1];
             %myAxes.power.YLim =[1, n_channels];
@@ -966,6 +977,8 @@ end
         lambdas = nirsplot_param.lambdas;
         n_channels = nirsplot_param.n_channels;
         qltyThld = nirsplot_param.quality_threshold;
+        sciThrld = nirsplot_param.sci_threshold;
+        pspThrld = nirsplot_param.psp_threshold;
         
         dodFlag = nirsplot_param.dodFlag;
         if dodFlag == 1
@@ -1071,20 +1084,20 @@ end
         
         mean_sci_link  = mean(sci_array(:,idxPoi),2);
         std_sci_link  = std(sci_array(:,idxPoi),0,2);
-        good_sci_link = sum(sci_array(:,idxPoi)>=0.8,2)/size(sci_array(:,idxPoi),2);
+        good_sci_link = sum(sci_array(:,idxPoi)>=sciThrld,2)/size(sci_array(:,idxPoi),2);
         mean_sci_window  = mean(sci_array(:,idxPoi),1);
         std_sci_window  = std(sci_array(:,idxPoi),0,1);
-        good_sci_window = sum(sci_array(:,idxPoi)>=0.8,1)/size(sci_array(:,idxPoi),1);
+        good_sci_window = sum(sci_array(:,idxPoi)>=sciThrld,1)/size(sci_array(:,idxPoi),1);
         
         mean_power_link  = mean(power_array(:,idxPoi),2);
         std_power_link  = std(power_array(:,idxPoi),0,2);
-        good_power_link = sum(power_array(:,idxPoi)>=0.1,2)/size(power_array(:,idxPoi),2);
+        good_power_link = sum(power_array(:,idxPoi)>=pspThrld,2)/size(power_array(:,idxPoi),2);
         mean_power_window  = mean(power_array(:,idxPoi),1);
         std_power_window  = std(power_array(:,idxPoi),0,1);
-        good_power_window = sum(power_array(:,idxPoi)>=0.1,1)/size(power_array(:,idxPoi),1);
+        good_power_window = sum(power_array(:,idxPoi)>=pspThrld,1)/size(power_array(:,idxPoi),1);
         
-        combo_array = (sci_array >= 0.8) & (power_array >= 0.10);
-        combo_array_expanded = 2*(sci_array >= 0.8) + (power_array >= 0.10);
+        combo_array = (sci_array >= sciThrld) & (power_array >= pspThrld);
+        combo_array_expanded = 2*(sci_array >= sciThrld) + (power_array >= pspThrld);
         
         mean_combo_link  = mean(combo_array,2);
         std_combo_link  = std(combo_array,0,2);
@@ -1128,8 +1141,8 @@ end
         qualityMats.allowed_samp = allowed_samp;
         qualityMats.MeasListAct = repelem(idx_gcl,2);%[idx_gcl; idx_gcl];
         qualityMats.MeasList = raw.SD.MeasList;
-        qualityMats.thresholds.sci = 0.8;
-        qualityMats.thresholds.peakpower = 0.1;
+        qualityMats.thresholds.sci = sciThrld;
+        qualityMats.thresholds.peakpower = pspThrld;
         qualityMats.thresholds.quality = qltyThld;
         %
     end
@@ -1351,12 +1364,6 @@ end
         ylabel('$F(x_{\lambda_1} \otimes x_{\lambda_2})$','Interpreter','latex','FontSize',16);
         ylim([0 0.5]);
         yline(0.1,'r--');
-
-    end
-
-    function sciThreshold(source, event)
-        event.IntersectionPoint
-        
     end
 
 
@@ -1371,6 +1378,9 @@ end
         lambdas = nirsplot_param.lambdas;
         n_channels = nirsplot_param.n_channels;
         qltyThld = nirsplot_param.quality_threshold;
+        sciThrld = nirsplot_param.sci_threshold;
+        pspThrld = nirsplot_param.psp_threshold;
+        
         % Set the bandpass filter parameters
         %fs = 1/mean(diff(raw.t));
         fs = nirsplot_param.fs;
@@ -1440,21 +1450,21 @@ end
         
         mean_sci_link  = mean(sci_array(:,idxPoi),2);
         std_sci_link  = std(sci_array(:,idxPoi),0,2);
-        good_sci_link = sum(sci_array(:,idxPoi)>=0.8,2)/size(sci_array(:,idxPoi),2);
+        good_sci_link = sum(sci_array(:,idxPoi)>=sciThrld,2)/size(sci_array(:,idxPoi),2);
         mean_sci_window  = mean(sci_array(:,idxPoi),1);
         std_sci_window  = std(sci_array(:,idxPoi),0,1);
-        good_sci_window = sum(sci_array(:,idxPoi)>=0.8,1)/size(sci_array(:,idxPoi),1);
+        good_sci_window = sum(sci_array(:,idxPoi)>=sciThrld,1)/size(sci_array(:,idxPoi),1);
         
         mean_power_link  = mean(power_array(:,idxPoi),2);
         std_power_link  = std(power_array(:,idxPoi),0,2);
-        good_power_link = sum(power_array(:,idxPoi)>=0.1,2)/size(power_array(:,idxPoi),2);
+        good_power_link = sum(power_array(:,idxPoi)>=pspThrld,2)/size(power_array(:,idxPoi),2);
         mean_power_window  = mean(power_array(:,idxPoi),1);
         std_power_window  = std(power_array(:,idxPoi),0,1);
-        good_power_window = sum(power_array(:,idxPoi)>=0.1,1)/size(power_array(:,idxPoi),1);
+        good_power_window = sum(power_array(:,idxPoi)>=pspThrld,1)/size(power_array(:,idxPoi),1);
         
-        combo_array = (sci_array >= 0.8) & (power_array >= 0.10);
-        combo_array_expanded = 2*(sci_array >= 0.8) + (power_array >= 0.10);
-        
+        combo_array = (sci_array >= sciThrld) & (power_array >= pspThrld);
+        combo_array_expanded = 2*(sci_array >= sciThrld) + (power_array >= pspThrld);
+                
         mean_combo_link  = mean(combo_array,2);
         std_combo_link  = std(combo_array,0,2);
         
@@ -1477,7 +1487,7 @@ end
         bad_links = find(mean_combo_link<qltyThld);
         bad_windows = find(mean_combo_window<qltyThld);
         
-        % Packaging sci, peakpower and combo
+       % Packaging sci, peakpower and combo
         qualityMats.sci_array    = sci_array;
         qualityMats.power_array  = power_array;
         qualityMats.combo_array  = combo_array;
@@ -1487,14 +1497,19 @@ end
         qualityMats.sampPerWindow = window_samples;
         qualityMats.fs = fs;
         qualityMats.n_windows = n_windows;
-        qualityMats.cardiac_data = cardiac_data;
-        qualityMats.good_combo_link = [raw.SD.MeasList(1:2:end,1),...
-            raw.SD.MeasList(1:2:end,2),good_combo_link];
+        qualityMats.overlap_samples = overlap_samples;
+        qualityMats.cardiac_data = cardiac_data; 
+        % Bug found by Benjamin Zinszer (miscalculation in the S-D pairs)
+        qualityMats.good_combo_link = [raw.SD.MeasList(1:length(raw.SD.Lambda):end,1),...
+            raw.SD.MeasList(1:length(raw.SD.Lambda):end,2),good_combo_link];
         qualityMats.good_combo_window = good_combo_window;
         qualityMats.woi = woi;
         qualityMats.allowed_samp = allowed_samp;
-        qualityMats.MeasListAct = [idx_gcl; idx_gcl];
+        qualityMats.MeasListAct = repelem(idx_gcl,2);%[idx_gcl; idx_gcl];
         qualityMats.MeasList = raw.SD.MeasList;
+        qualityMats.thresholds.sci = sciThrld;
+        qualityMats.thresholds.peakpower = pspThrld;
+        qualityMats.thresholds.quality = qltyThld;
         %
     end
 end %end of nirsplot function definition

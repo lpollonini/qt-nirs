@@ -34,7 +34,12 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         treeNodesDotNirs        matlab.ui.container.TreeNode
         dodCheckBox             matlab.ui.control.CheckBox
         wlLabel                 matlab.ui.control.Label
-        wlCheckBoxes        matlab.ui.control.CheckBox
+        wlCheckBoxes            matlab.ui.control.CheckBox
+        scipspLabel             matlab.ui.control.Label
+        sciThresholdLabel       matlab.ui.control.Label
+        pspThresholdLabel       matlab.ui.control.Label
+        sciThresholdField       matlab.ui.control.NumericEditField
+        pspThresholdField       matlab.ui.control.NumericEditField
 
     end
     
@@ -56,6 +61,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         windowOverlap % fraction overlap (0..0.99) between adjacent windows (default: 0, no overlap)
         reportTable % Quality output table report
         quality_threshold % Minimum required quality for channels
+        sci_threshold % SCI threshold (default:0.8)
+        psp_threshold % PSP threshold (default:0.1)
         condMask % Binary mask for selecting the conditions of interest
         lambdaMask % Binary mask for selection the WLs to be used for computing quality metrics.
         dotNirsPath % Path of the .nirs file to analyze
@@ -124,6 +131,14 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 if isfield(input_param,'quality_threshold')
                     app.quality_threshold = input_param.quality_threshold;
                     app.QualityThresholdField.Value = app.quality_threshold*100;
+                end
+                if isfield(input_param,'sci_threshold')
+                    app.sci_threshold = input_param.sci_threshold;
+                    app.sciThresholdField.Value = app.sci_threshold;
+                end
+                if isfield(input_param,'psp_threshold')
+                    app.psp_threshold = input_param.psp_threshold;
+                    app.pspThresholdField.Value = app.psp_threshold;
                 end
                 if isfield(input_param,'cond_mask')
                     % Create and fill StimuliSelectionBoxes
@@ -311,6 +326,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             app.windowOverlap = app.WindowsOverlapCtrl.Value*0.5;
             
             app.quality_threshold = app.QualityThresholdField.Value/100;
+            app.sci_threshold = app.sciThresholdField.Value;
+            app.psp_threshold = app.pspThresholdField.Value;
             app.condMask = zeros(1,app.nCond);
             if app.condCheckBoxes(1).Value == 1
                 app.condMask = 'resting';
@@ -333,6 +350,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 'window',app.windowSec,...
                 'overlap',app.windowOverlap,....
                 'qualityThreshold',app.quality_threshold,...
+                'sciThreshold',app.sci_threshold,...
+                'pspThreshold',app.psp_threshold,...
                 'conditionsMask',app.condMask,...
                 'dodFlag',app.dodCheckBox.Value,...
                 'guiFlag',1,...
@@ -406,12 +425,12 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             
             % Create ChannelsLabel
             app.ChannelsLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.ChannelsLabel.Position = [24 445 56 22];
+            app.ChannelsLabel.Position = [125 485 56 22];
             app.ChannelsLabel.Text = 'Channels';
             
             % Create DurLabel
             app.DurLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.DurLabel.Position = [24 425 42 22];
+            app.DurLabel.Position = [125 465 42 22];
             app.DurLabel.Text = 'Time(s)';
             
             % Create WLlabel
@@ -422,23 +441,56 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             
             % Create nSrcLab
             app.nSrcLab = uilabel(app.NIRSPlotGUIUIFigure);
-            app.nSrcLab.Position = [109 485 37 22];
+            app.nSrcLab.Position = [94 485 37 22];
             app.nSrcLab.Text = '0';
             
             % Create nDetecLab
             app.nDetecLab = uilabel(app.NIRSPlotGUIUIFigure);
-            app.nDetecLab.Position = [109 465 40 22];
+            app.nDetecLab.Position = [94 465 40 22];
             app.nDetecLab.Text = '0';
             
             % Create nChanLab
             app.nChanLab = uilabel(app.NIRSPlotGUIUIFigure);
-            app.nChanLab.Position = [109 445 40 22];
+            app.nChanLab.Position = [195 485 40 22];
             app.nChanLab.Text = '0';
             
             % Create secDurLab
             app.secDurLab = uilabel(app.NIRSPlotGUIUIFigure);
-            app.secDurLab.Position = [109 425 80 22];
+            app.secDurLab.Position = [185 465 80 22];
             app.secDurLab.Text = '0';
+            
+            %----
+            % from 465 to 370
+            % central label
+            % Create scipspLabel
+            app.scipspLabel = uilabel(app.NIRSPlotGUIUIFigure);
+            app.scipspLabel.Position = [69 435 97 22];
+            app.scipspLabel.Text = 'Metric thresholds';
+            % Sci label and field
+            % Create sciThresholdLabel
+            app.sciThresholdLabel = uilabel(app.NIRSPlotGUIUIFigure);
+            app.sciThresholdLabel.HorizontalAlignment = 'left';
+            app.sciThresholdLabel.Position = [24 405 30 22];
+            app.sciThresholdLabel.Text = 'SCI';
+            
+            % Create sciThresholdField
+            app.sciThresholdField = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
+            app.sciThresholdField.Position = [54 405 40 22];
+            app.sciThresholdField.Value = 0.8;
+            % PSP label and field
+            % Create pspThresholdLabel
+            app.pspThresholdLabel = uilabel(app.NIRSPlotGUIUIFigure);
+            app.pspThresholdLabel.HorizontalAlignment = 'left';
+            app.pspThresholdLabel.Position = [124 405 30 22];
+            app.pspThresholdLabel.Text = 'PSP';
+            
+            % Create pspThresholdField
+            app.pspThresholdField = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
+            app.pspThresholdField.Position = [155 405 40 22];
+            app.pspThresholdField.Value = 0.1;
+            
+            
+            %----
             
             % Create CutoffFrequencyLabel
             app.CutoffFrequencyLabel = uilabel(app.NIRSPlotGUIUIFigure);
