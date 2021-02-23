@@ -24,7 +24,7 @@ function quality_matrices = qtnirs(dotNirsFilePath,varargin)
 % 
 % Parameter keyword Description
 %  freqCut:   1x2 array [fmin fmax] representing the bandpass of the cardiac pulsation (default [0.5 2.5])
-%  window :   length in seconds of the window to partition the signal with (defaut: 5)
+%  window :   length in seconds of the window (defaut: 5)
 %  overlap:     fraction overlap (0..0.99) between adjacent windows (default: 0, no overlap)
 %  qualityThreshold:   The required quality value (normalized; 0-1) of good-quality windows in every channel (default: 0.75)
 %  conditionsMask:   A binary mask or keyword to indicate the conditions
@@ -136,7 +136,6 @@ elseif isstruct(dotNirsFilePath)
 elseif isa(dotNirsFilePath,'nirs.core.Data')
     rawNirs = struct;
     rawNirs.SD = nirs.util.probe2sd( dotNirsFilePath.probe );
-    rawNirs.ml = rawNirs.SD.MeasList;
     rawNirs.d = dotNirsFilePath.data;
     rawNirs.t = dotNirsFilePath.time;
     rawNirs.s = false(size(rawNirs.t));
@@ -358,19 +357,25 @@ nirsplot_parameters.guiFlag = guiFlag_;
 
 % Call the GUI for parameter inputs
 S=dbstack;
-if length(S)== 1 && guiFlag_ == 1
-    qtnirsLoadFileGUI(nirsplot_parameters)
+if guiFlag_ == 1
+    if length(S)== 1
+        qtnirsLoadFileGUI(nirsplot_parameters)
+    end
+    
+    % Create GUI
+    prev_window = findobj('type','figure');
+    if ~isempty(prev_window)
+        close(prev_window);
+    end
+    [main_fig_axes,main_fig] = createGUI();
+else
+    
+    main_fig = figure('Units','normalized',...
+        'Visible','off','Name','QT-NIRS',...
+        'NumberTitle','off','MenuBar','none');
+    main_fig_axes = [];
+    
 end
-report_table = [];
-
-
-% Create GUI
-prev_window = findobj('type','figure');
-if ~isempty(prev_window)
-    close(prev_window);
-end
-[main_fig_axes,main_fig] = createGUI();
-
 nirsplot_parameters.main_fig_axes = main_fig_axes;
 setappdata(main_fig,'nirsplot_parameters',nirsplot_parameters);
 
@@ -398,6 +403,7 @@ else
     close(main_fig);
 end
 
+report_table = [];
 if nirsplot_parameters.save_report_table == true
     report_table = saveQuality(quality_matrices);
 end
