@@ -22,6 +22,7 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
         Panel               matlab.ui.container.Panel
         Button_2            matlab.ui.control.Button
         Button_3            matlab.ui.control.Button
+        scanIDLab           matlab.ui.control.Label
     end
     
     properties (Access = public)
@@ -63,6 +64,7 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
         scoresMat
         nChannelsFx
         nSubjFx
+        flagScFl
     end
     % Component initialization
     methods (Access = private)
@@ -167,9 +169,17 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
             
             % Create LoadscanButton
             app.LoadscanButton = uibutton(app.Panel_2, 'push');
-            app.LoadscanButton.Position = [59 20 100 22];
+            app.LoadscanButton.Position = [59 30 100 22];
             app.LoadscanButton.Text = 'Load scan';
             app.LoadscanButton.ButtonPushedFcn = createCallbackFcn(app,@go2scan,true);
+            
+            % Create scanID label
+            app.scanIDLab = uilabel(app.Panel_2);
+            app.scanIDLab.Position = [10 5 150 22];
+            app.scanIDLab.Text = 'Scan:';
+            app.scanIDLab.FontSize = 14;
+
+            
             
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
@@ -177,18 +187,19 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
         
         % Button pushed function: LoadButton
         function LoadDotNirsDirPushed(app)
-            %             app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nirs files folder');
-            %             drawnow;
-            %             figure(app.UIFigure);
-            app.dotNirsPath = 'C:\Users\Samuel\OneDrive - University Of Houston\Nirsplot-OneDrive-SAMH\Data\CPGM\dotNirs\modified';
+%             app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nirs files folder');
+%             drawnow;
+%             figure(app.UIFigure);
+            %app.dotNirsPath = 'C:\Users\smonter2\OneDrive - University Of Houston\Nirsplot-OneDrive-SAMH\Data\CPGM\dotNirs\modified';
             if app.dotNirsPath~=0
                 LoadDotNirsDir(app);
             end
         end
+        
+        
         function LoadDotNirsDir(app)
             %Search for .nirs files in the folder
-            dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);
-            
+            dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);            
             % Add nodes to the tree with those .nirs files found
             if ~isempty(dotNirsFound)
                 folder = split(dotNirsFound(1,1).folder,filesep);
@@ -196,24 +207,25 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                 app.treeDotNirs.Children(1).Children.delete;
                 app.treeDotNirs.Children(1).Text = folder;
                 app.nSubjFx = length(dotNirsFound);
-                app.scoresMat = cell(app.nSubjFx,1);
                 for i=1:app.nSubjFx
                     tn = uitreenode(app.treeDotNirs.Children(1),'Text',dotNirsFound(i).name);
-                    %                     if strcmp(app.dotNirsFile,dotNirsFound(i).name)==1
-                    %                         app.treeDotNirs.SelectedNodes = tn;
-                    %                     end
-                    raw = load([app.dotNirsPath,filesep,dotNirsFound(i).name],'-mat');
-                    nChannels = size(raw.d,2)/2;
-                    Fs = 1/mean(diff(raw.t));
-                    n_samples = length(raw.t);                    
-                    overlap_samples = ceil(app.windowSec*Fs*app.windowOverlap);
-                    window_samples = floor(app.windowSec*Fs);
-                    if app.windowOverlap ==0
-                        nWindows = floor((n_samples)/(window_samples));
-                    else % Valid for overlap=50%
-                        nWindows = 2*floor((n_samples)/(window_samples))-1;
+                    %if strcmp(app.dotNirsFile,dotNirsFound(i).name)==1
+                    %    app.treeDotNirs.SelectedNodes = tn;
+                    % end
+                    if app.flagScFl==0
+                        raw = load([app.dotNirsPath,filesep,dotNirsFound(i).name],'-mat');
+                        nChannels = size(raw.d,2)/2;
+                        Fs = 1/mean(diff(raw.t));
+                        n_samples = length(raw.t);
+                        % overlap_samples = ceil(app.windowSec*Fs*app.windowOverlap);
+                        window_samples = floor(app.windowSec*Fs);
+                        if app.windowOverlap ==0
+                            nWindows = floor((n_samples)/(window_samples));
+                        else % Valid for overlap=50%
+                            nWindows = 2*floor((n_samples)/(window_samples))-1;
+                        end
+                        app.scoresMat{i}=zeros(nChannels,nWindows);
                     end
-                    app.scoresMat{i}=zeros(nChannels,nWindows);
                 end
                 expand(app.treeDotNirs);
             else
@@ -227,10 +239,12 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
         
         function go2scan(app,event)
             if isempty(app.treeDotNirs.SelectedNodes.Children) %Is it a leaf (file)?
+                app.scanIDLab.Text = 'Scan:';
                 dotNirsFileSel = app.treeDotNirs.SelectedNodes.Text;
                 app.dotNirsFile = dotNirsFileSel;
                 disp(['Loading: ',app.dotNirsPath,filesep,dotNirsFileSel]);
                 [filepath,name,ext] = fileparts([app.dotNirsPath,filesep,dotNirsFileSel]);
+                app.scanIDLab.Text = ['Scan: ',name];
                 name = strsplit(name,'_');
                 name = name{1}(2:end);
                 app.ptrSubject = str2num(name);
@@ -293,7 +307,6 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                 app.rawDotNirs.d = app.rawDotNirs.d(:,idx);
                 app.rawDotNirs.SD.MeasListAct = app.rawDotNirs.SD.MeasListAct(idx);
                 app.rawDotNirs.SD.MeasListVis = app.rawDotNirs.SD.MeasListVis(idx);
-                app.ptrOffsetSamp = 0;                
                 app.overlap_samples = ceil(app.windowSec*app.Fs*app.windowOverlap);
                 app.window_samples = floor(app.windowSec*app.Fs);
                 if app.windowOverlap ==0
@@ -304,7 +317,10 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                 app.Button_2.Enable = 'on';
                 app.Button_3.Enable = 'on';
                 app.LowButton.Enable = 'on';
-                app.HighButton.Enable = 'on';                
+                app.HighButton.Enable = 'on';
+                %app.ptrOffsetSamp = 0;
+                app.ptrWindow = 1;
+                app.ptrChannel = 1;
                 app.go2window(app);
             end
         end
@@ -357,28 +373,17 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
             myAxes.HbAxes.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];
             legend(myAxes.HbAxes,'HbO_2','HbR');
         end
+             
         
-        
-        
-        function go2window(app,event)
-            cast = app.scoresMat{app.ptrSubject}(app.ptrChannel,app.ptrWindow);
-            switch cast
-                case -1 
-                    app.LowButton.FontWeight = 'bold';
-                case 1
-                    app.HighButton.FontWeight = 'bold';
-                case 0
-                    app.LowButton.FontWeight = 'normal';
-                    app.HighButton.FontWeight = 'normal';
-            end
+        function go2window(app,event)           
             if ~isa(event,'matlab.ui.eventdata.ButtonPushedData')
                 app.ptrOnsetSamp  = 1;
                 app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
             else
                 if strcmp(event.Source.Text,'Bad')
                     disp('bad');
-                    app.ptrOffsetSamp = app.ptrOnsetSamp-1+app.overlap_samples;
-                    app.ptrOnsetSamp = app.ptrOnsetSamp - app.window_samples +app.overlap_samples - 1;
+                   app.ptrOnsetSamp = app.ptrOffsetSamp + 1 - app.overlap_samples;
+                    app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
                     app.scoresMat{app.ptrSubject}(app.ptrChannel,app.ptrWindow) = -1;
                     app.ptrWindow = app.ptrWindow +1;
                 end
@@ -417,8 +422,28 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                 app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples+app.overlap_samples;               
                 %return;
             end
+            
             if (app.ptrChannel <= app.nChannels)
                 updateAxes(app,app.ptrChannel,[app.ptrOnsetSamp,app.ptrOffsetSamp]);
+                cast = app.scoresMat{app.ptrSubject}(app.ptrChannel,app.ptrWindow);
+                %fprintf('Window: %i  vote:%i\n',app.ptrWindow,cast);
+                switch cast
+                    case -1
+                        app.LowButton.FontWeight = 'bold';
+                        app.HighButton.FontWeight = 'normal';                        
+                        app.LowButton.FontSize = 22;
+                        app.HighButton.FontSize = 16;
+                    case 1
+                        app.HighButton.FontWeight = 'bold';
+                        app.LowButton.FontWeight = 'normal';
+                        app.LowButton.FontSize = 16;
+                        app.HighButton.FontSize = 22;
+                    case 0
+                        app.LowButton.FontWeight = 'normal';
+                        app.HighButton.FontWeight = 'normal';
+                        app.LowButton.FontSize = 16;
+                        app.HighButton.FontSize = 16;
+                end
             else
                 idxsm = checkVotes(app);
                 if isempty(idxsm)
@@ -427,6 +452,7 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                     disp('Some windows have not been evaluated yet.');                    
                 end
             end
+            
         end
         
         function idxsm = checkVotes(app)
@@ -444,18 +470,26 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
             app.scoresFile = 'scores.mat';
             app.nChannelsFx = 16;
             app.nSubjFx = 18;
-            if exist('scores.mat','file')==2
-               disp('Scores.mat found, starting from the last visited window.');
-               load(app.scoresFile);
-               app.scoresMat = scoresMat;
-               
+            app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nirs files folder');
+            if app.dotNirsPath==0
+                closereq;
             else
-                disp('Scores.mat was not found, and it will be created.');
-                scoresMat = cell(18,1);
-                app.scoresMat = zeros(16,10,18);
-                scoresMat = app.scoresMat;
-                save('scores.mat','scoresMat');                
-                disp('Starting from the first window/channel/subject.');
+                cd(app.dotNirsPath);
+                %drawnow;
+                %figure(app.UIFigure);
+                if exist('scores.mat','file')==2
+                    disp('Scores.mat found, starting from the last visited window.');
+                    load(app.scoresFile);
+                    app.scoresMat = scoresMat;
+                    app.flagScFl = 1;
+                else
+                    disp('Scores.mat was not found, and it will be created.');
+                    app.scoresMat = cell(app.nSubjFx,1);
+                    scoresMat = app.scoresMat;
+                    save('scores.mat','scoresMat');
+                    disp('Starting from the first window/channel/subject.');
+                    app.flagScFl = 0;
+                end
             end
         end
     end
@@ -469,7 +503,7 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
             initApp(app);
             % Create UIFigure and components
             createComponents(app);
-            LoadDotNirsDirPushed(app);
+            %LoadDotNirsDirPushed(app);
             
             % Register the app with App Designer
             registerApp(app, app.UIFigure);
