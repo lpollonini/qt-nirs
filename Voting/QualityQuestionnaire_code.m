@@ -87,17 +87,17 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
             
             % Create IntAxes
             app.IntAxes = uiaxes(app.GridLayout);
-            title(app.IntAxes, 'Raw')
-            xlabel(app.IntAxes, 'Time (s)')
-            ylabel(app.IntAxes, 'Intensity')
+            title(app.IntAxes, 'Raw');
+            xlabel(app.IntAxes, 'Time (s)');
+            ylabel(app.IntAxes, 'Intensity');
             app.IntAxes.Layout.Row = 1;
-            app.IntAxes.Layout.Column = 1;
+            app.IntAxes.Layout.Column = 1;  
             
             % Create HbAxes
             app.HbAxes = uiaxes(app.GridLayout);
-            title(app.HbAxes, 'Hb')
-            xlabel(app.HbAxes, 'Time (s)')
-            ylabel(app.HbAxes, '\DeltaHb (\muMol)')
+            title(app.HbAxes, 'Hb');
+            xlabel(app.HbAxes, 'Time (s)');
+            ylabel(app.HbAxes, '\DeltaHb (\muMol)');           
             app.HbAxes.Layout.Row = 2;
             app.HbAxes.Layout.Column = 1;
             
@@ -238,6 +238,10 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
         
         
         function go2scan(app,event)
+            if ~isempty(event)
+                app.ptrWindow = 1;
+                app.ptrChannel = 1;
+            end
             if isempty(app.treeDotNirs.SelectedNodes.Children) %Is it a leaf (file)?
                 app.scanIDLab.Text = 'Scan:';
                 dotNirsFileSel = app.treeDotNirs.SelectedNodes.Text;
@@ -287,20 +291,7 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                     app.flagdc =false;
                 end
                 
-                if ~isfield(app.rawDotNirs,'s')
-                    frequency_samp = 1/mean(diff(app.rawDotNirs.t));
-                    if isfield(app.rawDotNirs,'StimDesign')
-                        nStim = length(app.rawDotNirs.StimDesign);
-                        sTmp = zeros(size(app.rawDotNirs.d,1),nStim);
-                        for iStim = 1:nStim
-                            sTmp(floor(app.rawDotNirs.StimDesign(iStim).onset * frequency_samp),iStim) = 1;
-                        end
-                        app.rawDotNirs.s = sTmp;
-                        clear sTmp;
-                    else
-                        error('Stimuli information is not available.');
-                    end
-                end
+
                 %Sort channels wl1-wl2-wl1-...
                 [~, idx]=sortrows(app.rawDotNirs.SD.MeasList,[3 1 2]);
                 app.rawDotNirs.SD.MeasList = app.rawDotNirs.SD.MeasList(idx,:);
@@ -319,8 +310,10 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                 app.LowButton.Enable = 'on';
                 app.HighButton.Enable = 'on';
                 %app.ptrOffsetSamp = 0;
-                app.ptrWindow = 1;
-                app.ptrChannel = 1;
+%                 if app.flagScFl~=1
+%                     app.ptrOnsetSamp  = 1;
+%                     app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
+%                 end
                 app.go2window(app);
             end
         end
@@ -331,9 +324,7 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
             end
             t = app.rawDotNirs.t;
             %disp(['channel:' num2str(iChannel)]);
-            raw = app.rawDotNirs;
-            myAxes.IntAxes = app.IntAxes;
-            myAxes.HbAxes = app.HbAxes;
+            raw = app.rawDotNirs;            
             disp(xLimWindow)
             % Intensity
             signal1 = raw.d(xLimWindow(1):xLimWindow(2),iChannel);
@@ -343,83 +334,94 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                 max([signal1; signal2],[],'all')].*[0.95,1.05];
             %XLimStd = myAxes.IntAxes.XLim;
             
-            cla(myAxes.IntAxes);
+            cla(app.IntAxes);
             
-            plot(myAxes.IntAxes,t(xLimWindow(1):xLimWindow(2)),...
+            plot(app.IntAxes,t(xLimWindow(1):xLimWindow(2)),...
                 signal1,'-k');
-            hold(myAxes.IntAxes,'on');
-            plot(myAxes.IntAxes,t(xLimWindow(1):xLimWindow(2)),...
+            hold(app.IntAxes,'on');
+            plot(app.IntAxes,t(xLimWindow(1):xLimWindow(2)),...
                 signal2,'--k');
             %xlim(myAxes.IntAxes,XLimStd);
-            myAxes.IntAxes.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];
-            ylim(myAxes.IntAxes,YLimStd);
-            legend(myAxes.IntAxes,'WL1','WL2');
+            app.IntAxes.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];
+            ylim(app.IntAxes,YLimStd);
+            legend(app.IntAxes,'WL1','WL2');
+            title(app.IntAxes, ['Raw (' num2str(app.ptrWindow) '/' num2str(app.n_windows) ')']);
+            ylabel(app.IntAxes, ['Intensity (' num2str(app.ptrChannel) '/' num2str(app.nChannels) ')']);
+
+
                       
             % Hb
             signal1 = raw.procResult.dc(xLimWindow(1):xLimWindow(2),iChannel);
             signal2 = raw.procResult.dc(xLimWindow(1):xLimWindow(2),iChannel+1);
             YLimStd = [min([signal1;signal2],[],'all'),...
                 max([signal1; signal2],[],'all')].*[0.95,1.05];
-            XLimStd = myAxes.HbAxes.XLim;
-            cla(myAxes.HbAxes);
+            XLimStd = app.HbAxes.XLim;
+            cla(app.HbAxes);
             
-            plot(myAxes.HbAxes,t(xLimWindow(1):xLimWindow(2)),...
+            plot(app.HbAxes,t(xLimWindow(1):xLimWindow(2)),...
                 signal1,'-r');
-            hold(myAxes.HbAxes,'on');
-            plot(myAxes.HbAxes,t(xLimWindow(1):xLimWindow(2)),...
+            hold(app.HbAxes,'on');
+            plot(app.HbAxes,t(xLimWindow(1):xLimWindow(2)),...
                 signal2,'-b');
-            xlim(myAxes.HbAxes,XLimStd);
+            xlim(app.HbAxes,XLimStd);
             %ylim(myAxes.HbAxes,YLimStd);
-            myAxes.HbAxes.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];
-            legend(myAxes.HbAxes,'HbO_2','HbR');
+            app.HbAxes.XLim= [t(xLimWindow(1)),t(xLimWindow(2))];
+            legend(app.HbAxes,'HbO_2','HbR');
+            title(app.HbAxes, ['Hb (' num2str(app.ptrWindow) '/' num2str(app.n_windows) ')']);
+            ylabel(app.HbAxes, ['\DeltaHb (' num2str(app.ptrChannel) '/' num2str(app.nChannels) ')']);
         end
              
         
-        function go2window(app,event)           
-            if ~isa(event,'matlab.ui.eventdata.ButtonPushedData')
-                app.ptrOnsetSamp  = 1;
-                app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
-            else
+        function go2window(app,event)
+            %             if ~isa(event,'matlab.ui.eventdata.ButtonPushedData')
+            %                 app.ptrOnsetSamp  = 1;
+            %                 app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
+            %             else
+            if isa(event,'matlab.ui.eventdata.ButtonPushedData')
                 if strcmp(event.Source.Text,'Bad')
                     disp('bad');
-                   app.ptrOnsetSamp = app.ptrOffsetSamp + 1 - app.overlap_samples;
-                    app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
+                    %app.ptrOnsetSamp = app.ptrOffsetSamp + 1 - app.overlap_samples;
+                    %app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
                     app.scoresMat{app.ptrSubject}(app.ptrChannel,app.ptrWindow) = -1;
                     app.ptrWindow = app.ptrWindow +1;
                 end
                 if strcmp(event.Source.Text,'Good')
                     disp('good');
-                    app.ptrOnsetSamp = app.ptrOffsetSamp + 1 - app.overlap_samples;
-                    app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
+                    %app.ptrOnsetSamp = app.ptrOffsetSamp + 1 - app.overlap_samples;
+                    %app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
                     app.scoresMat{app.ptrSubject}(app.ptrChannel,app.ptrWindow) = 1;
                     app.ptrWindow = app.ptrWindow +1;
                 end
                 if strcmp(event.Source.Text,'>>')
                     disp('>>');
-                    app.ptrOnsetSamp = app.ptrOffsetSamp + 1 - app.overlap_samples;
-                    app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
+                    %app.ptrOnsetSamp = app.ptrOffsetSamp + 1 - app.overlap_samples;
+                    %app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
                     app.ptrWindow = app.ptrWindow +1;
                 end
                 if strcmp(event.Source.Text,'<<')
                     disp('<<');
-                    app.ptrOffsetSamp = app.ptrOnsetSamp-1+app.overlap_samples;
-                    app.ptrOnsetSamp = app.ptrOnsetSamp - app.window_samples +app.overlap_samples - 1;
+                    %app.ptrOffsetSamp = app.ptrOnsetSamp-1+app.overlap_samples;
+                    %app.ptrOnsetSamp = app.ptrOnsetSamp - app.window_samples +app.overlap_samples - 1;
                     app.ptrWindow = app.ptrWindow -1;
                 end
             end
+            app.ptrOnsetSamp = (app.ptrWindow-1)*app.window_samples + 1 -app.overlap_samples;
+            app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples;
+           
+            %            end
             if app.ptrOnsetSamp<1
                 app.ptrOnsetSamp  = 1;
                 app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples+app.overlap_samples;
                 app.ptrWindow = 1;
-                return;
+                %return;
             end
             if app.ptrOffsetSamp > app.n_samples
                 %app.ptrOffsetSamp = app.ptrOnsetSamp-1;
                 %app.ptrOnsetSamp = app.ptrOnsetSamp - (app.window_samples+app.overlap_samples) -1;
                 app.ptrChannel = app.ptrChannel+1;
                 app.ptrWindow = 1;
-                app.ptrOnsetSamp  = 1;                
-                app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples+app.overlap_samples;               
+                app.ptrOnsetSamp  = 1;
+                app.ptrOffsetSamp = app.ptrOnsetSamp + app.window_samples+app.overlap_samples;
                 %return;
             end
             
@@ -430,7 +432,7 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                 switch cast
                     case -1
                         app.LowButton.FontWeight = 'bold';
-                        app.HighButton.FontWeight = 'normal';                        
+                        app.HighButton.FontWeight = 'normal';
                         app.LowButton.FontSize = 22;
                         app.HighButton.FontSize = 16;
                     case 1
@@ -449,7 +451,7 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
                 if isempty(idxsm)
                     disp('Scan finished, proceed to the next one.');
                 else
-                    disp('Some windows have not been evaluated yet.');                    
+                    disp('Some windows have not been evaluated yet.');
                 end
             end
             
@@ -463,8 +465,9 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
         end
         function initApp(app)
             app.ptrChannel = 1;
-            app.ptrWindow = 1;
+            app.ptrWindow = 0;
             %app.ptrOnsetSamp = 1;
+            app.ptrSubject = 1;
             app.windowSec = 5;
             app.windowOverlap = 0.0;
             app.scoresFile = 'scores.mat';
@@ -472,7 +475,7 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
             app.nSubjFx = 18;
             app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nirs files folder');
             if app.dotNirsPath==0
-                closereq;
+                 app.dotNirsPath = pwd;
             else
                 cd(app.dotNirsPath);
                 %drawnow;
@@ -503,8 +506,20 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
             initApp(app);
             % Create UIFigure and components
             createComponents(app);
-            %LoadDotNirsDirPushed(app);
-            
+            LoadDotNirsDir(app);
+            if app.flagScFl == 1
+                %app.ptrOnsetSamp = 1;
+                app.ptrOffsetSamp = 1;
+                for i=1:length(app.scoresMat)
+                   if ~isempty(find(app.scoresMat{i}~=0,1,'first'))
+                       [app.ptrWindow,app.ptrChannel]=find(app.scoresMat{i}(:,:)'==0,1,'first');
+                       app.ptrSubject = i;
+                   end
+                end
+                curNode=app.treeDotNirs.Children.Children(app.ptrSubject);
+                app.treeDotNirs.SelectedNodes = curNode;
+                go2scan(app,[]);
+            end
             % Register the app with App Designer
             registerApp(app, app.UIFigure);
             
