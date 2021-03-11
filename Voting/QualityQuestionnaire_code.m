@@ -52,10 +52,10 @@ classdef QualityQuestionnaire_code < matlab.apps.AppBase
         flagdc      % flag to detect Hb data
         ptrOffsetSamp     % pointer to current offset sample
         ptrOnsetSamp      % pointer to current onset sample
-        ptrChannel  %pointer to current channel
+        ptrChannel  	  %pointer to current channel
         ptrWindow 
-        ptrSubject          % pointer to the current subject
-        Fs          % Sampling frequency
+        ptrSubject        % pointer to the current subject
+        Fs          	  % Sampling frequency
         overlap_samples
         window_samples
         n_windows
