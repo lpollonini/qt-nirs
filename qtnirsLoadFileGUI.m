@@ -257,7 +257,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 if app.nlambda > 2
                     app.wlLabel.Visible = 'on';
                     xOffset = 54;
-                    yOffset = 405;
+                    yOffset = 185;
                     for iCB=1:app.nlambda
                         app.wlCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
                         app.wlCheckBoxes(iCB).Position =[xOffset,yOffset,...
@@ -435,7 +435,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             
             % Create WLlabel
             app.wlLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.wlLabel.Position = [24 405 42 22];
+            app.wlLabel.Position = [24 185 42 22];
             app.wlLabel.Text = 'WL';
             app.wlLabel.Visible = 'off';
             
@@ -521,22 +521,22 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             
             % Create WindowLabel
             app.WindowLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.WindowLabel.Position = [94 305 48 22];
+            app.WindowLabel.Position = [94 310 48 22];
             app.WindowLabel.Text = 'Window';
             
             % Create LengthsecSpinnerLabel
             app.LengthsecSpinnerLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.LengthsecSpinnerLabel.Position = [24 280 72 22];
+            app.LengthsecSpinnerLabel.Position = [24 285 72 22];
             app.LengthsecSpinnerLabel.Text = 'Length (sec)';
             
             % Create LengthsecSpinner
             app.LengthsecSpinner = uispinner(app.NIRSPlotGUIUIFigure);
-            app.LengthsecSpinner.Position = [107 280 59 22];
+            app.LengthsecSpinner.Position = [107 285 59 22];
             app.LengthsecSpinner.Value = 5;
             
             % Create OverlappingLabel
             app.OverlappingLabel = uilabel(app.NIRSPlotGUIUIFigure);
-            app.OverlappingLabel.Position = [24 240 70 28];
+            app.OverlappingLabel.Position = [24 250 70 28];
             app.OverlappingLabel.Text = {'Overlapping'};
             
             % Create WindowsoverlapSlider
@@ -552,24 +552,24 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             app.WindowsOverlapCtrl = uicheckbox(app.NIRSPlotGUIUIFigure);
             app.WindowsOverlapCtrl.Value = 0;
             app.WindowsOverlapCtrl.Text = '';
-            app.WindowsOverlapCtrl.Position = [99 240 70 22];
+            app.WindowsOverlapCtrl.Position = [99 250 70 22];
             app.WindowsOverlapCtrl.Enable = 'on';
             
             % Create QualityThresholdLabel
             app.QualityThresholdLabel = uilabel(app.NIRSPlotGUIUIFigure);
             app.QualityThresholdLabel.HorizontalAlignment = 'left';
-            app.QualityThresholdLabel.Position = [24 195 80 28];
+            app.QualityThresholdLabel.Position = [24 215 80 28];
             app.QualityThresholdLabel.Text = {'Quality'; '(0-100)'};
             
             % Create QualityThresholdField
             app.QualityThresholdField = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
-            app.QualityThresholdField.Position = [99 195 50 22];
+            app.QualityThresholdField.Position = [99 215 50 22];
             app.QualityThresholdField.Value = 90;
             
             % Create stimCheckBLabel
             app.condCheckBLabel = uilabel(app.NIRSPlotGUIUIFigure);
             app.condCheckBLabel.HorizontalAlignment = 'left';
-            app.condCheckBLabel.Position = [90, 160, 120, 28];
+            app.condCheckBLabel.Position = [90, 155, 120, 28];
             app.condCheckBLabel.Text = 'Conditions';
             
             % Create PlotButton
