@@ -69,6 +69,7 @@ classdef QT < nirs.modules.AbstractModule
                     qMats.combo_array = qMats.combo_array(qt_sort_idx,:);
                     qMats.bad_links =  find(mean(qMats.combo_array,2)<qMats.thresholds.quality); 
                     %qMats.bad_links = data(i).probe.link(idx_badlinks,[1 2]);
+                    qMats = rmfield(qMats,{'woi','combo_array_expanded','cardiac_data'});                    
                     S(i).qMats = qMats;
                     fprintf('Scan %i of %i processed.\n',i,numel(data));
                 else
