@@ -281,10 +281,11 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         
         % Button pushed function: LoadButton
         function LoadDotNirsDirPushed(app, event)
-            app.dotNirsPath = uigetdir(app.dotNirsPath,'Select .nirs files folder');
+            dotNirsPath_tmp = uigetdir(app.dotNirsPath,'Select .nirs files folder');
             drawnow;
             figure(app.NIRSPlotGUIUIFigure);
-            if app.dotNirsPath~=0                
+            if dotNirsPath_tmp ~=0    
+                app.dotNirsPath = dotNirsPath_tmp;
                 LoadDotNirsDir(app, app.dotNirsPath);
             end
         end
@@ -294,7 +295,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             app.dotNirsPath = dotNirsPath;
             %Search for .nirs files in the folder
             dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);
-
+            cd(app.dotNirsPath);
             % Add nodes to the tree with those .nirs files found
             if ~isempty(dotNirsFound)
                 folder = split(dotNirsFound(1,1).folder,filesep);

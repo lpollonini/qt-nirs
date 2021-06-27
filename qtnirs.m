@@ -87,7 +87,9 @@ function quality_matrices = qtnirs(dotNirsFilePath,varargin)
 %     qtnirsLoadFileGUI(pwd);
 %     return;
 % end
-
+if exist('dotNirsFilePath','var')==0
+    dotNirsFilePath = pwd;
+end
 if ischar(dotNirsFilePath)
     if isfile(dotNirsFilePath)
         [filepath,name,ext] = fileparts(dotNirsFilePath);
