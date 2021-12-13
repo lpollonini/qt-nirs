@@ -40,7 +40,9 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         pspThresholdLabel       matlab.ui.control.Label
         sciThresholdField       matlab.ui.control.NumericEditField
         pspThresholdField       matlab.ui.control.NumericEditField
-
+        bg                      matlab.ui.container.ButtonGroup
+        rb1                     matlab.ui.control.RadioButton
+        rb2                     matlab.ui.control.RadioButton  
     end
     
     
@@ -320,6 +322,15 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         
         
         % Callback function
+        function goQuality(app, event)
+           if app.rb1.Value ==1
+               PlotButtonIndiv(app, event);
+           else
+               PlotButtonGroup(app, event);
+               generateQReport(app.reportTable);
+           end
+        end
+        
         function PlotButtonIndiv(app, event)
             app.bpFmin = app.FreqMinEditField.Value;
             app.bpFmax = app.FreqMaxEditField.Value;
@@ -358,6 +369,59 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 'guiFlag',1,...
                 'lambdaMask',app.lambdaMask);
         end
+        
+        
+        function PlotButtonGroup(app, event)
+            %Search for .nirs files in the folder
+            dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);
+            
+            app.bpFmin = app.FreqMinEditField.Value;
+            app.bpFmax = app.FreqMaxEditField.Value;
+            app.windowSec = app.LengthsecSpinner.Value;
+            app.windowOverlap = app.WindowsOverlapCtrl.Value*0.5;
+            
+            app.quality_threshold = app.QualityThresholdField.Value/100;
+            app.sci_threshold = app.sciThresholdField.Value;
+            app.psp_threshold = app.pspThresholdField.Value;
+            app.condMask = zeros(1,app.nCond);
+            if app.condCheckBoxes(1).Value == 1
+                app.condMask = 'resting';
+            else
+                for iCB=1:app.nCond
+                    app.condMask(iCB) = logical(app.condCheckBoxes(iCB+1).Value);
+                end
+            end
+            
+            if isvalid(app.wlCheckBoxes)
+               for iCB=1:app.nlambda
+                  app.lambdaMask(iCB) = app.wlCheckBoxes(iCB).Value; 
+               end
+            else
+                app.lambdaMask = [1 1];
+            end
+            
+            for i = 1:numel(dotNirsFound)
+                if((strcmp(dotNirsFound(i).name(end-4:end),'.nirs')==1) || ...
+                        (strcmp(dotNirsFound(i).name(end-5:end),'.snirf')==1))
+                    qMats = qtnirs([app.dotNirsPath,filesep,dotNirsFound(i).name],...
+                        'freqCut',[app.bpFmin, app.bpFmax],...
+                        'window',app.windowSec,...
+                        'overlap',app.windowOverlap,....
+                        'qualityThreshold',app.quality_threshold,...
+                        'sciThreshold',app.sci_threshold,...
+                        'pspThreshold',app.psp_threshold,...
+                        'conditionsMask',app.condMask,...
+                        'dodFlag',app.dodCheckBox.Value,...
+                        'guiFlag',0,...
+                        'lambdaMask',app.lambdaMask);
+                    app.reportTable(i).qMats = qMats;
+                    clear qMats;
+                    fprintf('Scan %i of %i processed.\n',i,numel(dotNirsFound));
+                else
+                    error('unsupported type');
+                end                
+            end            
+        end               
     end
     
     % Component initialization
@@ -490,9 +554,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             app.pspThresholdField.Position = [155 405 40 22];
             app.pspThresholdField.Value = 0.1;
             
-            
-            %----
-            
+                      
             % Create CutoffFrequencyLabel
             app.CutoffFrequencyLabel = uilabel(app.NIRSPlotGUIUIFigure);
             app.CutoffFrequencyLabel.Position = [69 370 97 22];
@@ -540,15 +602,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             app.OverlappingLabel.Position = [24 250 70 28];
             app.OverlappingLabel.Text = {'Overlapping'};
             
-            % Create WindowsoverlapSlider
-%             app.WindowsoverlapSlider = uislider(app.NIRSPlotGUIUIFigure);
-%             app.WindowsoverlapSlider.MajorTicks = [0 25 50 75 100];
-%             app.WindowsoverlapSlider.MajorTickLabels = {'0', '25', '50', '75', '100'};
-%             app.WindowsoverlapSlider.Position = [99 255 94 3];
-            % Create WindowOverlapCtrl
-%             app.WindowsOverlapCtrl = uieditfield(app.NIRSPlotGUIUIFigure, 'numeric');
-%             app.WindowsOverlapCtrl.Position = [99 245 50 22];
-%             app.WindowsOverlapCtrl.Value = 0;
+ 
             % Create dodCheckBox
             app.WindowsOverlapCtrl = uicheckbox(app.NIRSPlotGUIUIFigure);
             app.WindowsOverlapCtrl.Value = 0;
@@ -575,10 +629,19 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             
             % Create PlotButton
             app.PlotButton = uibutton(app.NIRSPlotGUIUIFigure, 'push');
-            app.PlotButton.ButtonPushedFcn = createCallbackFcn(app, @PlotButtonIndiv, true);
+            app.PlotButton.ButtonPushedFcn = createCallbackFcn(app, @goQuality, true);
             app.PlotButton.Position = [120 35 70 22];
             app.PlotButton.Text = 'Go';
             
+            % Create radiobuttons for Subject or Group level analysis
+            app.bg = uibuttongroup(app.NIRSPlotGUIUIFigure,'Position',[15 32 90 45]);   
+            app.bg.BorderType = 'none';
+            app.rb1 = uiradiobutton(app.bg,'Position',[10 25 91 15]);
+            app.rb2 = uiradiobutton(app.bg,'Position',[10 7 91 15]);
+            app.rb1.Text = 'Scan';
+            app.rb2.Text = 'Group';
+            app.rb1.Value = true;
+                       
             % Show the figure after all components are created
             app.NIRSPlotGUIUIFigure.Visible = 'on';
         end
