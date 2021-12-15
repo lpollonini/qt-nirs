@@ -237,6 +237,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                     60, 15];
                 app.condCheckBoxes(1).Value = 0;
                 app.condCheckBoxes(1).Text = 'Resting';
+                app.condCheckBoxes(1).ValueChangedFcn = createCallbackFcn(app,@cleanCheckboxes,true);
                 xOffset = xOffset + 80;
                 
                 for iCB=2:(app.nCond +1)
@@ -245,6 +246,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                         35, 15];
                     app.condCheckBoxes(iCB).Value = 1;
                     app.condCheckBoxes(iCB).Text = num2str(iCB-1);
+                    app.condCheckBoxes(iCB).ValueChangedFcn = createCallbackFcn(app,@cleanCheckboxes,true);
+
                     mod_ = mod(iCB,4);
                     if mod_ == 0
                         yOffset = yOffset - 25;
@@ -323,12 +326,16 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         
         % Callback function
         function goQuality(app, event)
-           if app.rb1.Value ==1
-               PlotButtonIndiv(app, event);
-           else
-               PlotButtonGroup(app, event);
-               generateQReport(app.reportTable);
-           end
+            if isfield(app,'reportTable')
+                app = rmfield(app,'reportTable');
+            end
+            if app.rb1.Value ==1
+                PlotButtonIndiv(app, event);
+                generateQReport(app.reportTable);
+            else
+                PlotButtonGroup(app, event);
+                generateQReport(app.reportTable);
+            end
         end
         
         function PlotButtonIndiv(app, event)
@@ -414,14 +421,24 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                         'dodFlag',app.dodCheckBox.Value,...
                         'guiFlag',0,...
                         'lambdaMask',app.lambdaMask);
-                    app.reportTable(i).qMats = qMats;
+                    app.reportTable(i) = qMats;
                     clear qMats;
                     fprintf('Scan %i of %i processed.\n',i,numel(dotNirsFound));
                 else
                     error('unsupported type');
                 end                
             end            
-        end               
+        end
+        
+        function cleanCheckboxes(app,event)
+            if strcmp(event.Source.Text,'Resting')==1 && event.Value==1
+                for i =2:numel(app.condCheckBoxes)
+                    app.condCheckBoxes(i).Value = 0;
+                end
+            elseif strcmp(event.Source.Text,'Resting')==0 && event.Value==1
+                app.condCheckBoxes(1).Value = 0;
+            end
+        end
     end
     
     % Component initialization
@@ -603,7 +620,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             app.OverlappingLabel.Text = {'Overlapping'};
             
  
-            % Create dodCheckBox
+            % Create dodWindowsOverlap
             app.WindowsOverlapCtrl = uicheckbox(app.NIRSPlotGUIUIFigure);
             app.WindowsOverlapCtrl.Value = 0;
             app.WindowsOverlapCtrl.Text = '';

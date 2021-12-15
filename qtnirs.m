@@ -948,7 +948,7 @@ end
         qltyThld = nirsplot_param.quality_threshold;
         sciThrld = nirsplot_param.sci_threshold;
         pspThrld = nirsplot_param.psp_threshold;
-        
+        scanInfo = nirsplot_param.dotNirsFile;
         dodFlag = nirsplot_param.dodFlag;
         if dodFlag == 1
             dm = mean(abs(raw.d),1);
@@ -1113,6 +1113,7 @@ end
         qualityMats.thresholds.sci = sciThrld;
         qualityMats.thresholds.peakpower = pspThrld;
         qualityMats.thresholds.quality = qltyThld;
+        qualityMats.scanInfo = scanInfo ;
         %
     end
 
