@@ -82,7 +82,7 @@ else
     
     % SCI and PSP product
     f2=figure('Name','Channel-level Report','NumberTitle','off');
-    imagesc(reportTable.sci_array.*reportTable.power_array);
+    imagesc((reportTable.sci_array.^2).*reportTable.power_array);
     title(reportTable.scanInfo,'Interpreter','none');
     yticks(1:nchannels);
     yticklabels(string([num2str(reportTable(1).good_combo_link(:,1)),...
@@ -91,7 +91,7 @@ else
     colormap(bone(20));
     c = colorbar();
     c.Limits = [0 0.5];
-    c.Label.String = 'SCI \times PSP';
+    c.Label.String = 'SCI^2 \times PSP';
     xlabel('Time (n-sec windows)');
     ylabel('Source-Detector pair');
 end
