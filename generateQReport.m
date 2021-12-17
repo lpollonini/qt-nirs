@@ -43,6 +43,9 @@ if nscans>1
     ylabel('#Scans');
     ylim([0, nscans]);
     legend(['HQ above ',num2str(master_threshold*100),'% of time']);
+    f1.WindowState = 'maximized';
+    exportgraphics(f1,'QC_Group_good-channels_scanwise.png','Resolution',300);
+    close(f1);
 
     %Heat map: display the achieved quality for every channel and every
     %subject
@@ -63,10 +66,80 @@ if nscans>1
     c.Label.String = 'Recording time with good quality (%)';
     a = gca;
     a.TickLabelInterpreter = 'none';
+    f2.WindowState = 'maximized';
+    exportgraphics(f2,'QC_Group_quality_channelwise.png','Resolution',300);
+    close(f2);
 
+    % QT style
+    for i =1:nscans
+        window_sec = reportTable(i).sampPerWindow/reportTable(i).fs;
+        f3 = figure('Name','Data quality report: SCI, PSP, (SCI and PSP)','NumberTitle','off');
+        tickOffsetWind = 50/window_sec;
+        ticksVals = (0:reportTable(i).n_windows)*reportTable(i).sampPerWindow;
+        ticksVals = ticksVals(1:tickOffsetWind:length(ticksVals));
+        ticksVals = floor(ticksVals./reportTable(i).sampPerWindow);
+        ticksLab = 0:50:(reportTable(i).n_windows*reportTable(i).sampPerWindow);
+
+
+        subplot(3,1,1);
+        imagesc(reportTable(i).sci_array>=reportTable(i).thresholds.sci);
+        colormap([0 0 0; 1 1 1]);
+        asci = gca;
+        asci.CLim = [0,1];
+        colorbar('eastoutside',...
+            'Tag','colorb_sci',...
+            'Ticks',[0.25 0.75],...
+            'Limits',[0,1],...
+            'TickLabels',{'Bad','Good'});
+        asci.XAxis.TickValues=ticksVals(2:end);
+        asci.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
+        asci.YLabel.String = 'Channel #';
+        asci.YLabel.FontWeight = 'bold';
+        subtitle(sprintf('SCI >= %.2f',reportTable(i).thresholds.sci));
+        title(reportTable(i).scanInfo,"Interpreter","none");
+
+        % Power peak
+        subplot(3,1,2);
+        imagesc(reportTable(i).power_array>=reportTable(i).thresholds.peakpower);
+        colormap([0 0 0; 1 1 1]);
+        apsp = gca;
+        apsp.CLim = [0,1];
+        colorbar('eastoutside',...
+            'Tag','colorb_psp',...
+            'Ticks',[0.25 0.75],...
+            'Limits',[0,1],...
+            'TickLabels',{'Bad','Good'});
+        apsp.XAxis.TickValues=ticksVals(2:end);
+        apsp.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
+        apsp.YLabel.String = 'Channel #';
+        apsp.YLabel.FontWeight = 'bold';
+        subtitle(sprintf('PSP >= %.2f',reportTable(i).thresholds.peakpower));
+        
+        subplot(3,1,3);
+        imagesc(reportTable(i).combo_array);
+        acombo = gca;
+        acombo.CLim = [0,1];
+        acombo.Colormap = [0 0 0;1 1 1];
+        
+        acombo.XAxis.TickValues=ticksVals(2:end);
+        acombo.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
+        colorbar(acombo,"eastoutside","Ticks",[0.25 0.75],...
+            'Limits',[0,1],'TickLabels',{'Bad','Good'});
+        acombo.YLabel.String = 'Channel #';
+        acombo.YLabel.FontWeight = 'bold';
+        acombo.XLabel.String = 'Time(s)';
+        subtitle(sprintf('SCI >= %.2f and PSP >= %.2f',...
+            reportTable(i).thresholds.sci,...
+            reportTable(i).thresholds.peakpower));
+        
+        f3.WindowState = 'maximized';
+        exportgraphics(f3,sprintf('QC_%s_SCI-PSP-Combo.png',reportTable(i).scanInfo),'Resolution',300);
+        close(f3);
+    end
+    
 else
     report_mat = reportTable.good_combo_link(:,3);
-    
+
     %report_mat = report_mat./max(report_mat);
     f1=figure('Name','Channel-level Report','NumberTitle','off');
     bar(report_mat);
