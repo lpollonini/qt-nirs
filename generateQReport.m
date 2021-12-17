@@ -95,8 +95,7 @@ if nscans>1
         asci.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
         asci.YLabel.String = 'Channel #';
         asci.YLabel.FontWeight = 'bold';
-        subtitle(sprintf('SCI >= %.2f',reportTable(i).thresholds.sci));
-        title(reportTable(i).scanInfo,"Interpreter","none");
+        title(sprintf('%s - SCI >= %.2f',reportTable(i).scanInfo,reportTable(i).thresholds.sci),"Interpreter","none");
 
         % Power peak
         subplot(3,1,2);
@@ -113,7 +112,7 @@ if nscans>1
         apsp.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
         apsp.YLabel.String = 'Channel #';
         apsp.YLabel.FontWeight = 'bold';
-        subtitle(sprintf('PSP >= %.2f',reportTable(i).thresholds.peakpower));
+        title(sprintf('PSP >= %.2f',reportTable(i).thresholds.peakpower));
         
         subplot(3,1,3);
         imagesc(reportTable(i).combo_array);
@@ -128,7 +127,7 @@ if nscans>1
         acombo.YLabel.String = 'Channel #';
         acombo.YLabel.FontWeight = 'bold';
         acombo.XLabel.String = 'Time(s)';
-        subtitle(sprintf('SCI >= %.2f and PSP >= %.2f',...
+        title(sprintf('SCI >= %.2f and PSP >= %.2f',...
             reportTable(i).thresholds.sci,...
             reportTable(i).thresholds.peakpower));
         
