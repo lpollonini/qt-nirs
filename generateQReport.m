@@ -44,7 +44,7 @@ if nscans>1
     ylim([0, nscans]);
     legend(['HQ above ',num2str(master_threshold*100),'% of time']);
     f1.WindowState = 'maximized';
-    exportgraphics(f1,'QC_Group_good-channels_scanwise.png','Resolution',300);
+    saveas(f1,'QC_Group_good-channels_scanwise.png');
     close(f1);
 
     %Heat map: display the achieved quality for every channel and every
@@ -67,7 +67,7 @@ if nscans>1
     a = gca;
     a.TickLabelInterpreter = 'none';
     f2.WindowState = 'maximized';
-    exportgraphics(f2,'QC_Group_quality_channelwise.png','Resolution',300);
+    saveas(f2,'QC_Group_quality_channelwise.png');
     close(f2);
 
     % QT style
@@ -133,7 +133,7 @@ if nscans>1
             reportTable(i).thresholds.peakpower));
         
         f3.WindowState = 'maximized';
-        exportgraphics(f3,sprintf('QC_%s_SCI-PSP-Combo.png',reportTable(i).scanInfo),'Resolution',300);
+        saveas(f3,sprintf('QC_%s_SCI-PSP-Combo.png',reportTable(i).scanInfo));
         close(f3);
     end
     
