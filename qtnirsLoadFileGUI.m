@@ -175,6 +175,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         % Tree selectionChanged function: treeDotNirs
         function treeSelection(app, event)
             if isempty(event.SelectedNodes.Children) %Is it a leaf (file)?
+                app.PlotButton.Enable = 1;
                 dotNirsFileSel = event.SelectedNodes.Text;
                 app.dotNirsFile = dotNirsFileSel;
                 disp(['Loading: ',app.dotNirsPath,filesep,dotNirsFileSel]);
@@ -235,7 +236,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 app.condCheckBoxes(1) = uicheckbox(app.NIRSPlotGUIUIFigure);
                 app.condCheckBoxes(1).Position =[xOffset,yOffset,...
                     60, 15];
-                app.condCheckBoxes(1).Value = 0;
+                app.condCheckBoxes(1).Value = 1;
                 app.condCheckBoxes(1).Text = 'Resting';
                 app.condCheckBoxes(1).ValueChangedFcn = createCallbackFcn(app,@cleanCheckboxes,true);
                 xOffset = xOffset + 80;
@@ -244,7 +245,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                     app.condCheckBoxes(iCB) = uicheckbox(app.NIRSPlotGUIUIFigure);
                     app.condCheckBoxes(iCB).Position =[xOffset,yOffset,...
                         35, 15];
-                    app.condCheckBoxes(iCB).Value = 1;
+                    app.condCheckBoxes(iCB).Value = 0;
                     app.condCheckBoxes(iCB).Text = num2str(iCB-1);
                     app.condCheckBoxes(iCB).ValueChangedFcn = createCallbackFcn(app,@cleanCheckboxes,true);
 
@@ -281,6 +282,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                      app.wlLabel.Visible = 'off';
                      app.wlCheckBoxes.delete;
                 end
+            else
+                app.PlotButton.Enable = 0;
             end
         end
         
@@ -328,6 +331,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         function goQuality(app, event)
             if isfield(app,'reportTable')
                 app = rmfield(app,'reportTable');
+            else
+                app.reportTable = struct([]);
             end
             if app.rb1.Value ==1
                 PlotButtonIndiv(app, event);
@@ -410,7 +415,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             for i = 1:numel(dotNirsFound)
                 if((strcmp(dotNirsFound(i).name(end-4:end),'.nirs')==1) || ...
                         (strcmp(dotNirsFound(i).name(end-5:end),'.snirf')==1))
-                    qMats = qtnirs([app.dotNirsPath,filesep,dotNirsFound(i).name],...
+                    app.reportTable = [app.reportTable;qtnirs([app.dotNirsPath,filesep,dotNirsFound(i).name],...
                         'freqCut',[app.bpFmin, app.bpFmax],...
                         'window',app.windowSec,...
                         'overlap',app.windowOverlap,....
@@ -420,9 +425,9 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                         'conditionsMask',app.condMask,...
                         'dodFlag',app.dodCheckBox.Value,...
                         'guiFlag',0,...
-                        'lambdaMask',app.lambdaMask);
-                    app.reportTable(i) = qMats;
-                    clear qMats;
+                        'lambdaMask',app.lambdaMask)];
+                    %app.reportTable(i) = qMats;
+                    %clear qMats;
                     fprintf('Scan %i of %i processed.\n',i,numel(dotNirsFound));
                 else
                     error('unsupported type');
@@ -648,6 +653,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             app.PlotButton = uibutton(app.NIRSPlotGUIUIFigure, 'push');
             app.PlotButton.ButtonPushedFcn = createCallbackFcn(app, @goQuality, true);
             app.PlotButton.Position = [120 35 70 22];
+            app.PlotButton.Enable = 0;
             app.PlotButton.Text = 'Go';
             
             % Create radiobuttons for Subject or Group level analysis
