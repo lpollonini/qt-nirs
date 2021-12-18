@@ -113,17 +113,33 @@ if nscans>1
         apsp.YLabel.String = 'Channel #';
         apsp.YLabel.FontWeight = 'bold';
         title(sprintf('PSP >= %.2f',reportTable(i).thresholds.peakpower));
-        
+
         subplot(3,1,3);
-        imagesc(reportTable(i).combo_array);
+        %
+        imagesc(reportTable(i).combo_array_expanded);
         acombo = gca;
-        acombo.CLim = [0,1];
-        acombo.Colormap = [0 0 0;1 1 1];
-        
+        acombo.CLim = [1, 3];        
+        qualityColor = [0 0 0; 0 0 0; 1 0 0; 1 1 1];
+        colormap(acombo,qualityColor);
+        colorbar(acombo,"eastoutside","Ticks",[1.3 1.5 2.25 2.75],...
+            'TickLabels',...
+            {[char(hex2dec('2717')),'SCI  ', char(hex2dec('2717')),'Power'],...
+            [char(hex2dec('2717')),'SCI  ', char(hex2dec('2713')),'Power'],...
+            [char(hex2dec('2713')),'SCI  ', char(hex2dec('2717')),'Power'],...
+            [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
         acombo.XAxis.TickValues=ticksVals(2:end);
         acombo.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
-        colorbar(acombo,"eastoutside","Ticks",[0.25 0.75],...
-            'Limits',[0,1],'TickLabels',{'Bad','Good'});
+
+        %
+%         imagesc(reportTable(i).combo_array);
+%         acombo = gca;
+%         acombo.CLim = [0,1];
+%         acombo.Colormap = [0 0 0;1 1 1];
+%         
+%         acombo.XAxis.TickValues=ticksVals(2:end);
+%         acombo.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
+%         colorbar(acombo,"eastoutside","Ticks",[0.25 0.75],...
+%             'Limits',[0,1],'TickLabels',{'Bad','Good'});
         acombo.YLabel.String = 'Channel #';
         acombo.YLabel.FontWeight = 'bold';
         acombo.XLabel.String = 'Time(s)';
