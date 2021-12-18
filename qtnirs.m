@@ -700,23 +700,25 @@ end
         % Combo quality
         if ~hideMAVal
             imagesc(myAxes.combo,combo_array_expanded);
-            myAxes.combo.CLim = [1, 3];
+            myAxes.combo.CLim = [0, 4];
             %myAxes.combo.YLim =[1, n_channels];
             %myAxes.combo.XLim =[1, size(combo_array,2)];
             %colormap(myAxes.combo,[0 0 0;1 1 1]);
             % SCI,Power   combo_array_expanded    QualityColor
             %  0,0              0                   [0 0    0]
             %  0,1              1                   [0 0    0]
-            %  2,0              2                   [0.7 0.7 0.7]
-            %  2,1              3                   [0 1    0]
-            qualityColor = [0 0 0; 0 0 0; 1 0 0; 1 1 1];
+            %  2,0              2                   [1 0    0]
+            %  2,1              3                   [1 1    1]
+            %  X,X              4                   [0 0 1] Saturation
+            qualityColor = [0 0 0; 0 0 0; 1 0 0; 1 1 1;0 0 1];
             colormap(myAxes.combo,qualityColor);
-            colorbar(myAxes.combo,"eastoutside","Ticks",[1.3 1.5 2.25 2.75],...
+            colorbar(myAxes.combo,"eastoutside","Ticks",[0.7 1.0 2.05 2.75 3.5],...
                 'TickLabels',...
                 {[char(hex2dec('2717')),'SCI  ', char(hex2dec('2717')),'Power'],...
                 [char(hex2dec('2717')),'SCI  ', char(hex2dec('2713')),'Power'],...
                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2717')),'Power'],...
-                [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power']});
+                [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power'],...
+                'Saturation'});
         else
             % Combo quality
             imagesc(myAxes.combo,combo_array);
@@ -989,7 +991,7 @@ end
         cardiac_data = cardiac_data(find(lambda_mask),:,:);
         sci_array = zeros(size(cardiac_data,3),n_windows);    % Number of optode is from the user's layout, not the machine
         power_array = zeros(size(cardiac_data,3),n_windows);
-        %fpower_array = zeros(size(cardiac_data,3),n_windows);
+        fpower_array = zeros(size(cardiac_data,3),n_windows);
         cardiac_windows = zeros(length(lambdas),window_samples,n_channels,n_windows);
         for j = 1:n_windows
             if overlap~=0
@@ -1021,22 +1023,26 @@ end
                 if any(abs(similarity)>eps)
                     % this makes the SCI=1 at lag zero when x1=x2 AND makes the power estimate independent of signal length, amplitude and Fs
                     similarity = length(squeeze(cardiac_window(1,:,k)))*similarity./sqrt(sum(abs(squeeze(cardiac_window(1,:,k))).^2)*sum(abs(squeeze(cardiac_window(2,:,k))).^2));
+                    similarity(isnan(similarity)) = 0;
+                    [pxx,f] = periodogram(similarity,hamming(length(similarity)),length(similarity),fs,'power');
+                    [pwrest,idx] = max(pxx(f<fcut_max)); % FIX Make it age-dependent
+                    sci=similarity(length(squeeze(cardiac_window(1,:,k))));
+                    power=pwrest;
+                    fpower=f(idx);
+                    sci_array_channels(k) = sci;
+                    power_array_channels(k) = power;
+                    fpower_array_channels(k) = fpower;
                 else
-                    warning('Similarity results close to zero');
+                    warning('Similarity results close to zero');           
+                    sci_array_channels(k) = 0;
+                    power_array_channels(k) = 0;
+                    fpower_array_channels(k) = -1;
                 end
-                similarity(isnan(similarity)) = 0;
-                [pxx,f] = periodogram(similarity,hamming(length(similarity)),length(similarity),fs,'power');
-                [pwrest,idx] = max(pxx(f<fcut_max)); % FIX Make it age-dependent
-                sci=similarity(length(squeeze(cardiac_window(1,:,k))));
-                power=pwrest;
-                fpower=f(idx);
-                sci_array_channels(k) = sci;
-                power_array_channels(k) = power;
-                fpower_array_channels(k) = fpower;
+                
             end
             sci_array(:,j) = sci_array_channels;    % Adjust not based on machine
             power_array(:,j) = power_array_channels;
-            %    fpower_array(:,j) = fpower_array_channels;
+            fpower_array(:,j) = fpower_array_channels;
         end
         
         % Summary analysis
@@ -1066,7 +1072,9 @@ end
         good_power_window = sum(power_array(:,idxPoi)>=pspThrld,1)/size(power_array(:,idxPoi),1);
         
         combo_array = (sci_array >= sciThrld) & (power_array >= pspThrld);
-        combo_array_expanded = 2*(sci_array >= sciThrld) + (power_array >= pspThrld);
+        saturat_mat = fpower_array==-1;
+        combo_array_expanded = 2*(sci_array >= sciThrld) + (power_array >= pspThrld) +...
+            saturat_mat*4;
         
         mean_combo_link  = mean(combo_array,2);
         std_combo_link  = std(combo_array,0,2);
