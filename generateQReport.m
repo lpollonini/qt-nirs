@@ -72,14 +72,24 @@ if nscans>1
 
     % QT style
     for i =1:nscans
-        window_sec = reportTable(i).sampPerWindow/reportTable(i).fs;
+        approx_scan_duration = reportTable(i).sampPerWindow*reportTable(i).n_windows / reportTable(i).fs;
         f3 = figure('Name','Data quality report: SCI, PSP, (SCI and PSP)','NumberTitle','off');
-        tickOffsetWind = 50/window_sec;
-        ticksVals = (0:reportTable(i).n_windows)*reportTable(i).sampPerWindow;
-        ticksVals = ticksVals(1:tickOffsetWind:length(ticksVals));
-        ticksVals = floor(ticksVals./reportTable(i).sampPerWindow);
-        ticksLab = 0:50:(reportTable(i).n_windows*reportTable(i).sampPerWindow);
+        
+        if approx_scan_duration > 2000
+            shift_in_sec = 200;
+            interval = shift_in_sec*reportTable(i).fs/reportTable(i).sampPerWindow;
+        elseif approx_scan_duration > 1000
+            shift_in_sec = 100;
+            interval = shift_in_sec*reportTable(i).fs/reportTable(i).sampPerWindow;
+        else
+            shift_in_sec = 50;
+            interval = shift_in_sec*reportTable(i).fs/reportTable(i).sampPerWindow;
+        end
+        
 
+        window_seconds = reportTable(i).sampPerWindow/reportTable(i).fs;
+        ticksVals = interval:interval:reportTable(i).n_windows;
+        ticksLab = round(ticksVals*window_seconds);      
 
         subplot(3,1,1);
         imagesc(reportTable(i).sci_array>=reportTable(i).thresholds.sci);
@@ -91,8 +101,8 @@ if nscans>1
             'Ticks',[0.25 0.75],...
             'Limits',[0,1],...
             'TickLabels',{'Bad','Good'});
-        asci.XAxis.TickValues=ticksVals(2:end);
-        asci.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
+        asci.XAxis.TickValues=ticksVals;
+        asci.XAxis.TickLabels=split(num2str(ticksLab));
         asci.YLabel.String = 'Channel #';
         asci.YLabel.FontWeight = 'bold';
         title(sprintf('%s - SCI >= %.2f',reportTable(i).scanInfo,reportTable(i).thresholds.sci),"Interpreter","none");
@@ -108,14 +118,14 @@ if nscans>1
             'Ticks',[0.25 0.75],...
             'Limits',[0,1],...
             'TickLabels',{'Bad','Good'});
-        apsp.XAxis.TickValues=ticksVals(2:end);
-        apsp.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
+        apsp.XAxis.TickValues=ticksVals;
+        apsp.XAxis.TickLabels=split(num2str(ticksLab));
         apsp.YLabel.String = 'Channel #';
         apsp.YLabel.FontWeight = 'bold';
         title(sprintf('PSP >= %.2f',reportTable(i).thresholds.peakpower));
 
+        % Combo panel
         subplot(3,1,3);
-        %
         imagesc(reportTable(i).combo_array_expanded);
         acombo = gca;
         acombo.CLim = [0, 4];        
@@ -128,19 +138,8 @@ if nscans>1
                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2717')),'Power'],...
                 [char(hex2dec('2713')),'SCI  ', char(hex2dec('2713')),'Power'],...
                 'Saturation'});
-        acombo.XAxis.TickValues=ticksVals(2:end);
-        acombo.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
-
-        %
-%         imagesc(reportTable(i).combo_array);
-%         acombo = gca;
-%         acombo.CLim = [0,1];
-%         acombo.Colormap = [0 0 0;1 1 1];
-%         
-%         acombo.XAxis.TickValues=ticksVals(2:end);
-%         acombo.XAxis.TickLabels=split(num2str(ticksLab(2:end)));
-%         colorbar(acombo,"eastoutside","Ticks",[0.25 0.75],...
-%             'Limits',[0,1],'TickLabels',{'Bad','Good'});
+        acombo.XAxis.TickValues=ticksVals;
+        acombo.XAxis.TickLabels=split(num2str(ticksLab));
         acombo.YLabel.String = 'Channel #';
         acombo.YLabel.FontWeight = 'bold';
         acombo.XLabel.String = 'Time(s)';
@@ -156,7 +155,6 @@ if nscans>1
 else
     report_mat = reportTable.good_combo_link(:,3);
 
-    %report_mat = report_mat./max(report_mat);
     f1=figure('Name','Channel-level Report','NumberTitle','off');
     bar(report_mat);
     title(sprintf('%s (SCI=%.2f,PSP=%.2f)',reportTable.scanInfo,...
