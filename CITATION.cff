@@ -1,0 +1,33 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: QT-NIRS (Quality Testing of Near Infrared Scans)
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Samuel
+    family-names: Montero-Hernandez
+    email: smonterohernandez@uh.edu
+    affiliation: University of Houston
+    orcid: 'https://orcid.org/0000-0002-4093-8066'
+  - given-names: Luca
+    family-names: Pollonini
+    email: lpollonini@uh.edu
+    affiliation: University of Houston
+    orcid: 'https://orcid.org/0000-0003-2955-6355'
+repository-code: 'https://github.com/lpollonini/qt-nirs'
+url: 'https://github.com/lpollonini/qt-nirs/wiki'
+abstract: >-
+  Quality Testing NIRS is a MATLAB-based tool for the
+  quality control of fNIRS measurements after data
+  acquisition. Based on the photoplethysmographic
+  waveform of the raw fNIRS scans, QT-NIRS is able to
+  identify high- and low-quality fNIRS data at a
+  subject, channel, or time-window level.
+keywords:
+  - fnirs
+  - signal quality
+  - cardiac pulsation
