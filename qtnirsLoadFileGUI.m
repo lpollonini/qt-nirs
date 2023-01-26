@@ -186,8 +186,10 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                     case '.snirf'
                         rawsnirf = SnirfClass([app.dotNirsPath,filesep,app.dotNirsFile]);
                         %app.rawDotNirs.d = rawsnirf.Get_d;
-                        app.rawDotNirs.s = rawsnirf.Get_s;
-                        app.rawDotNirs.t = rawsnirf.Get_t;
+                        %app.rawDotNirs.s = rawsnirf.Get_s;
+                        %app.rawDotNirs.t = rawsnirf.Get_t;
+                        app.rawDotNirs.t = rawsnirf.data.time;
+                        app.rawDotNirs.s = rawsnirf.GetStims(app.rawDotNirs.t);
                         app.rawDotNirs.SD = rawsnirf.Get_SD;
                     otherwise
                         error('The input file should be a .nirs file format');
