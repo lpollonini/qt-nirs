@@ -304,7 +304,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         function LoadDotNirsDir(app, dotNirsPath)
             app.dotNirsPath = dotNirsPath;
             %Search for .nirs files in the folder
-            dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);
+            %dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);
+            dotNirsFound = rdir(fullfile(app.dotNirsPath,'**','*.*nir*'));
             cd(app.dotNirsPath);
             % Add nodes to the tree with those .nirs files found
             if ~isempty(dotNirsFound)
@@ -314,7 +315,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 app.treeDotNirs.Children(1).Text = folder;
                 
                 for i=1:length(dotNirsFound)
-                    tn = uitreenode(app.treeDotNirs.Children(1),'Text',dotNirsFound(i).name);
+                    tn = uitreenode(app.treeDotNirs.Children(1),'Text',dotNirsFound(i).name(length(app.dotNirsPath)+2:end));
                     if strcmp(app.dotNirsFile,dotNirsFound(i).name)==1
                         app.treeDotNirs.SelectedNodes = tn;
                     end
