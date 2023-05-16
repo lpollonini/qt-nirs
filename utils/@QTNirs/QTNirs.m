@@ -103,7 +103,7 @@ classdef QTNirs
             legend(['HQ above ',num2str(master_threshold*100),'% of time']);
         end
         
-        function f=draw(obj,type)
+ function f=draw(obj,type)
             % types can be: SNI, SNR, Mean, Median, Max, Min, Motion, KPSS,
             % ADtest
             
@@ -166,19 +166,26 @@ classdef QTNirs
             %obj.probe.draw(colors(lst,:),lstyles,h);
             obj.probe.draw(colors,lstyles,h);
             c = colorbar; colormap(cmap); caxis(vrange);
-            if strcmp(type,'sq') || strcmp(type,'sci')
+            if strcmp(type,'sq') %|| strcmp(type,'sci')
                 c_ticks = c.Ticks;
                 idx = find(c_ticks>thresh_plot,1);
                 c_ticks(idx+1:end+1) = c.Ticks(idx:end);
                 c_ticks(idx) = thresh_plot;
                 c.Ticks = c_ticks;
                 c.TickLabels = split(num2str(c.Ticks*100));
-                c.TickLabels{idx} ='       <= Threshold';%,num2str(100*thresh_plot)];
+                c.TickLabels{idx} ='       <= Threshold';
+                c.Label.String='% of scan duration';
             else
-                c.TickLabels = [split(num2str(c.Ticks));num2str(thresh_plot)];
-            end
-            c.Label.String='% of scan duration';
-            
+                c_ticks = c.Ticks;
+                idx = find(c_ticks>thresh_plot,1);
+                c_ticks(idx+1:end+1) = c.Ticks(idx:end);
+                c_ticks(idx) = thresh_plot;
+                c.Ticks = c_ticks;
+                c.TickLabels = split(num2str(c.Ticks));
+                c.TickLabels{idx} ='       <= Threshold';
+                c.Label.String=type;
+            end            
+            c.Label.FontSize = 12;
             title(['Channel quality:', type]);
         end
         
@@ -224,12 +231,14 @@ classdef QTNirs
                 case 'sci'
                     val = sci_mean;
                     vrange=[min(val) max(val)];
-                    idx_below_thresh = val<obj(1).qMats.thresholds.sci;
-                    
+                    thresh_plot = obj(1).qMats.thresholds.sci;
+                    idx_below_thresh = val<thresh_plot;
+
                 case 'psp'
                     val = psp_mean;
                     vrange=[min(val) max(val)];
-                    idx_below_thresh = val<obj(1).qMats.thresholds.peakpower;
+                    thresh_plot = obj(1).qMats.thresholds.peakpower;
+                    idx_below_thresh = val<thresh_plot;
                     
                 case 'bar'
                     f=obj.drawBarBadLinks();
@@ -237,7 +246,8 @@ classdef QTNirs
                 case 'sq'
                     val = gcl_mean;
                     vrange=[0 1];
-                    idx_below_thresh = val<obj(1).qMats.thresholds.quality;
+                    thresh_plot = obj(1).qMats.thresholds.quality;
+                    idx_below_thresh = val<thresh_plot;
                 
                 % FIX THIS VISUALIZATION ------------------------------------
                 case 'sqcount'
@@ -295,14 +305,27 @@ classdef QTNirs
             obj(1).probe.draw(colors,lstyles,h);
             c = colorbar; colormap(cmap); caxis(vrange);
            if strcmp(type,'sq')
+                c_ticks = c.Ticks;
+                idx = find(c_ticks>thresh_plot,1);
+                c_ticks(idx+1:end+1) = c.Ticks(idx:end);
+                c_ticks(idx) = thresh_plot;
+                c.Ticks = c_ticks;
                 c.TickLabels = split(num2str(c.Ticks*100));
-                c.Label.String='High-quality scans (%)';
+                c.TickLabels{idx} ='       <= Threshold';
+                %c.TickLabels = split(num2str(c.Ticks*100));
+                c.Label.String='% of scan duration';
             else
+                 c_ticks = c.Ticks;
+                idx = find(c_ticks>thresh_plot,1);
+                c_ticks(idx+1:end+1) = c.Ticks(idx:end);
+                c_ticks(idx) = thresh_plot;
+                c.Ticks = c_ticks;
                 c.TickLabels = split(num2str(c.Ticks));
-                c.Label.String='High-quality scans';
-            end
-            
-            c.Label.FontSize = 12;
+                c.TickLabels{idx} ='       <= Threshold';
+                %c.TickLabels = split(num2str(c.Ticks));
+                c.Label.String=type;
+           end
+           c.Label.FontSize = 12;
             
             title(['Channel quality:', type]);
         end        
