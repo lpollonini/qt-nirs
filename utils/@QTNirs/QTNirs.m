@@ -128,16 +128,19 @@ classdef QTNirs
             switch(lower(type))
                 case 'sci'
                     val = mean(obj.qMats.sci_array,2);
+                    thresh_plot = obj.qMats.thresholds.sci;
                     vrange=[min(val) max(val)];
-                    idx_below_thresh = val<obj.qMats.thresholds.sci;
+                    idx_below_thresh = val<thresh_plot;
                 case 'psp'
                     val = mean(obj.qMats.power_array,2);
+                    thresh_plot = obj.qMats.thresholds.peakpower;
                     vrange=[min(val) max(val)];
-                    idx_below_thresh = val<obj.qMats.thresholds.peakpower;
+                    idx_below_thresh = val<thresh_plot;
                 case 'sq'
                     val = obj.qMats.good_combo_link(:,3);
+                    thresh_plot = obj.qMats.thresholds.quality;
                     vrange=[0 1];
-                    idx_below_thresh = val<obj.qMats.thresholds.quality;
+                    idx_below_thresh = val<thresh_plot;
             end
             
             %vrange=[min(val) max(val)];
@@ -164,11 +167,17 @@ classdef QTNirs
             obj.probe.draw(colors,lstyles,h);
             c = colorbar; colormap(cmap); caxis(vrange);
             if strcmp(type,'sq') || strcmp(type,'sci')
+                c_ticks = c.Ticks;
+                idx = find(c_ticks>thresh_plot,1);
+                c_ticks(idx+1:end+1) = c.Ticks(idx:end);
+                c_ticks(idx) = thresh_plot;
+                c.Ticks = c_ticks;
                 c.TickLabels = split(num2str(c.Ticks*100));
+                c.TickLabels{idx} ='       <= Threshold';%,num2str(100*thresh_plot)];
             else
-                c.TickLabels = split(num2str(c.Ticks));
+                c.TickLabels = [split(num2str(c.Ticks));num2str(thresh_plot)];
             end
-            c.Label.String='(%)';
+            c.Label.String='% of scan duration';
             
             title(['Channel quality:', type]);
         end
