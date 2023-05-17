@@ -332,6 +332,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         
         % Callback function
         function goQuality(app, event)
+            fprintf('\nProcessing...');
             if isfield(app,'reportTable')
                 app = rmfield(app,'reportTable');
             else
@@ -344,6 +345,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                 PlotButtonGroup(app, event);
                 generateQReport(app.reportTable);
             end
+            fprintf(' done.\n')
         end
         
         function PlotButtonIndiv(app, event)
