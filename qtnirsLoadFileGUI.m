@@ -390,8 +390,8 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
         
         function PlotButtonGroup(app, event)
             %Search for .nirs files in the folder
-            dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);
-            
+            %dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);
+            dotNirsFound = rdir(fullfile(app.dotNirsPath,'**','*.*nir*'));
             app.bpFmin = app.FreqMinEditField.Value;
             app.bpFmax = app.FreqMaxEditField.Value;
             app.windowSec = app.LengthsecSpinner.Value;
@@ -420,7 +420,7 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             for i = 1:numel(dotNirsFound)
                 if((strcmp(dotNirsFound(i).name(end-4:end),'.nirs')==1) || ...
                         (strcmp(dotNirsFound(i).name(end-5:end),'.snirf')==1))
-                    app.reportTable = [app.reportTable;qtnirs([app.dotNirsPath,filesep,dotNirsFound(i).name],...
+                    app.reportTable = [app.reportTable;qtnirs([dotNirsFound(i).name],...
                         'freqCut',[app.bpFmin, app.bpFmax],...
                         'window',app.windowSec,...
                         'overlap',app.windowOverlap,....
