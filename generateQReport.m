@@ -11,7 +11,7 @@ function generateQReport(reportTable)
 % Notes:
 % 
 % Version 0.1   Initial state
-%
+% Last update: Oct 11, 2023
 %
 
 nscans = numel(reportTable);
@@ -156,7 +156,8 @@ else
     report_mat = reportTable.good_combo_link(:,3);
 
     f1=figure('Name','Channel-level Report','NumberTitle','off');
-    bar(report_mat);
+    bar(report_mat*100); %Bug found by Pieter Van den Berghe
+    ylim([0,100]);
     title(sprintf('%s (SCI=%.2f,PSP=%.2f)',reportTable.scanInfo,...
         reportTable.thresholds.sci,reportTable.thresholds.peakpower),'Interpreter','none');
     xticks(1:nchannels);
