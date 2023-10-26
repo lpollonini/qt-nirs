@@ -367,9 +367,15 @@ if guiFlag_ == 1
     end
     
     % Create GUI
-    prev_window = findobj('type','figure');
+    prev_window = findall(groot,'Type','Figure');
     if ~isempty(prev_window)
-        close(prev_window);
+        for ifig=1:length(prev_window)
+            if contains(prev_window(ifig).Name,'QT-NIRS')==1
+                close(prev_window(ifig));
+            elseif contains(prev_window(ifig).Name,'Homer3')==1
+                qtnirsLoadFileGUI(nirsplot_parameters)
+            end
+        end
     end
     [main_fig_axes,main_fig] = createGUI();
 else
@@ -919,9 +925,9 @@ end
                 'Margin',1,'Clipping','on',...
                 'HorizontalAlignment',textHAlign,'VerticalAlignment',textVAlign);
             %--graphical debug
-             graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
-                 qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs,fcut);
-             figure(source.Parent); 
+             % graphicDebug(qMats.cardiac_data(1,xLimWindow(1):xLimWindow(2),iChannel),...
+             %     qMats.cardiac_data(2,xLimWindow(1):xLimWindow(2),iChannel),fs,fcut);
+             % figure(source.Parent); 
         end
         myAxes.inspector.YLim = YLimStd;
         myAxes.inspector.XLim = XLimStd;
