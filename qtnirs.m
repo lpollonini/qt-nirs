@@ -384,9 +384,9 @@ if guiFlag_ == 1
     prev_window = findall(groot,'Type','Figure');
     if ~isempty(prev_window)
         for ifig=1:length(prev_window)
-            if contains(prev_window(ifig).Name,'QT-NIRS')==1
+            if strcmp(prev_window(ifig).Name,'QT-NIRS-View')==1
                 close(prev_window(ifig));
-            elseif contains(prev_window(ifig).Name,'Homer3')==1
+            elseif contains(prev_window(ifig).Name,'Homer3')==1            
                 qtnirsLoadFileGUI(nirsplot_parameters)
             end
         end
@@ -395,7 +395,7 @@ if guiFlag_ == 1
 else
     
     main_fig = figure('Units','normalized',...
-        'Visible','off','Name','QT-NIRS',...
+        'Visible','off','Name','QT-NIRS-View',...
         'NumberTitle','off','MenuBar','none');
     main_fig_axes = [];
     
@@ -441,7 +441,7 @@ end
         pos.main = [0.20 0.05 0.75 0.85]; % left, bottom, width, height
         main_fig = figure('Units','normalized',...
             'Position',pos.main,'Visible','off',...
-            'Name','QT-NIRS','NumberTitle','off','MenuBar','none','Toolbar','figure');
+            'Name','QT-NIRS-View','NumberTitle','off','MenuBar','none','Toolbar','figure');
         
         % Axes
         % SCI
