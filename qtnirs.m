@@ -153,6 +153,20 @@ elseif isa(dotNirsFilePath,'nirs.core.Data')
     filepath = pwd;
     name = 'QTNIRSAnalized';
     ext = '.nirs';   
+elseif isa(dotNirsFilePath,'SnirfClass')
+    rawSnirf = dotNirsFilePath;
+    rawNirs.d = rawSnirf.Get_d;
+    %rawNirs.s = rawSnirf.Get_s;
+    %rawNirs.t = rawSnirf.Get_t;
+    rawNirs.t = rawSnirf.data.time;
+    rawNirs.s = rawSnirf.GetStims(rawNirs.t);
+    rawNirs.SD = rawSnirf.Get_SD;
+    rawNirs.aux = rawSnirf.GetAux;
+    filepath = pwd;
+    name = 'SnirfClass';
+    ext = '.snirf';
+else
+    disp('Filetype is not valid.');
 end
 
 propertyArgIn = varargin;
