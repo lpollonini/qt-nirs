@@ -191,13 +191,36 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
                         app.rawDotNirs.t = rawsnirf.data.time;
                         app.rawDotNirs.s = rawsnirf.GetStims(app.rawDotNirs.t);
                         app.rawDotNirs.SD = rawsnirf.Get_SD;
+                    case '.mat'
+                        rawNdot = load([app.dotNirsPath,filesep,app.dotNirsFile],'-mat');
+                        app.rawDotNirs.d = rawNdot.data';
+                        app.rawDotNirs.t = 0:1/rawNdot.info.system.framerate:(size(rawNdot.data,2)-1)/rawNdot.info.system.framerate;
+                        s_temp = zeros(size(rawNdot.data,2),max(rawNdot.info.paradigm.synchtype));
+                        for pulse = 1:size(s_temp,2)
+                            varname = ['Pulse_' num2str(pulse)];
+                            s_temp(rawNdot.info.paradigm.synchpts(rawNdot.info.paradigm.(varname)),pulse) = 1;
+                        end
+                        app.rawDotNirs.s = s_temp;
+                        app.rawDotNirs.SD.nScrs = rawNdot.info.io.Ns;
+                        app.rawDotNirs.SD.nDets = rawNdot.info.io.Nd;
+                        app.rawDotNirs.SD.Lambda = unique(rawNdot.info.pairs.lambda);
+                        app.rawDotNirs.SD.SrcPos2 = rawNdot.info.optodes.spos2;
+                        app.rawDotNirs.SD.DetPos2 = rawNdot.info.optodes.dpos2;
+                        app.rawDotNirs.SD.SrcPos3 = rawNdot.info.optodes.spos3;
+                        app.rawDotNirs.SD.DetPos3 = rawNdot.info.optodes.dpos3;
+                        app.rawDotNirs.SD.MeasList = [rawNdot.info.pairs.Src rawNdot.info.pairs.Det ones(length(rawNdot.info.pairs.WL),1) rawNdot.info.pairs.WL] ;
                     otherwise
                         error('The input file should be a .nirs file format');
                 end
                 app.nlambda         = length(app.rawDotNirs.SD.Lambda);
                 app.nChannels       = size(app.rawDotNirs.SD.MeasList,1)/app.nlambda;
-                app.nSources        = size(app.rawDotNirs.SD.SrcPos,1);
-                app.nDetectors      = size(app.rawDotNirs.SD.DetPos,1);
+                if isfield(app.rawDotNirs.SD,'nScrs')
+                    app.nSources        = app.rawDotNirs.SD.nScrs;
+                    app.nDetectors      = app.rawDotNirs.SD.nDets;
+                else
+                    app.nSources        = size(app.rawDotNirs.SD.SrcPos,1);
+                    app.nDetectors      = size(app.rawDotNirs.SD.DetPos,1);
+                end
                 app.secDur          = app.rawDotNirs.t(end);
                 app.nSrcLab.Text    = num2str(app.nSources);
                 app.nDetecLab.Text  = num2str(app.nDetectors);
@@ -306,6 +329,41 @@ classdef qtnirsLoadFileGUI < matlab.apps.AppBase
             %Search for .nirs files in the folder
             %dotNirsFound = dir([app.dotNirsPath,filesep,'*.*nir*']);
             dotNirsFound = rdir(fullfile(app.dotNirsPath,'**','*.*nir*'));
+
+            dotMatFound = rdir(fullfile(app.dotNirsPath,'**','*.mat'));
+            % Initialize a logical array to track which files match our criteria
+            keepFile = false(size(dotMatFound)); 
+            
+            % 2. Loop through each found file
+            for i = 1:length(dotMatFound)
+                % rdir stores the complete file path in the 'name' field
+                filePath = dotMatFound(i).name;        
+                try
+                    % 3. Inspect the file contents WITHOUT loading data
+                    fileVars = whos('-file', filePath);
+                    
+                    % Extract just the names of the variables in this file
+                    varNamesInFile = {fileVars.name};
+                    
+                    % 4. Check if BOTH target variables exist in the file
+                    hasVar1 = ismember('data', varNamesInFile);
+                    hasVar2 = ismember('info', varNamesInFile);
+                    
+                    % 5. If both are found, flag this index as true
+                    if hasVar1 && hasVar2
+                        keepFile(i) = true;
+                    end
+                    
+                catch
+                    % Catch and skip files that are corrupted or lack read permissions
+                    warning('Could not read or inspect file: %s', filePath);
+                end
+            end
+            
+            % 6. Filter the original struct array to keep only the matching files
+            NdotFound = dotMatFound(keepFile);
+
+            dotNirsFound = [dotNirsFound; NdotFound];
             cd(app.dotNirsPath);
             % Add nodes to the tree with those .nirs files found
             if ~isempty(dotNirsFound)
