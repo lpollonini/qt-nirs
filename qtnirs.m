@@ -105,6 +105,24 @@ if ischar(dotNirsFilePath)
                 rawNirs.s = rawSnirf.GetStims(rawNirs.t);
                 rawNirs.SD = rawSnirf.Get_SD;
                 rawNirs.aux = rawSnirf.GetAux;
+            case '.mat' % NeuroDOT format
+                rawNdot = load(dotNirsFilePath,'-mat');
+                rawNirs.d = rawNdot.data';
+                rawNirs.t = 0:1/rawNdot.info.system.framerate:(size(rawNdot.data,2)-1)/rawNdot.info.system.framerate;
+                s_temp = zeros(size(rawNdot.data,2),max(rawNdot.info.paradigm.synchtype));
+                for pulse = 1:size(s_temp,2)
+                    varname = ['Pulse_' num2str(pulse)];
+                    s_temp(rawNdot.info.paradigm.synchpts(rawNdot.info.paradigm.(varname)),pulse) = 1;
+                end
+                rawNirs.s = s_temp;
+                rawNirs.SD.nScrs = rawNdot.info.io.Ns;
+                rawNirs.SD.nDets = rawNdot.info.io.Nd;
+                rawNirs.SD.Lambda = unique(rawNdot.info.pairs.lambda);
+                rawNirs.SD.SrcPos2 = rawNdot.info.optodes.spos2;
+                rawNirs.SD.DetPos2 = rawNdot.info.optodes.dpos2;
+                rawNirs.SD.SrcPos3 = rawNdot.info.optodes.spos3;
+                rawNirs.SD.DetPos3 = rawNdot.info.optodes.dpos3;
+                rawNirs.SD.MeasList = [rawNdot.info.pairs.Src rawNdot.info.pairs.Det ones(length(rawNdot.info.pairs.WL),1) rawNdot.info.pairs.WL] ;
             otherwise
                  error('The input file should be a .nirs file format');
         end
@@ -359,8 +377,13 @@ nirsplot_parameters.sci_threshold = sci_threshold;
 nirsplot_parameters.psp_threshold = psp_threshold;
 % Bug found by Benjamin Zinszer (miscalculation in the number of channels)
 nirsplot_parameters.n_channels = size(rawNirs.d,2)/length(rawNirs.SD.Lambda);
-nirsplot_parameters.n_sources = size(rawNirs.SD.SrcPos,1);
-nirsplot_parameters.n_detectors = size(rawNirs.SD.DetPos,1);
+if isfield(rawNirs.SD,'SrcPos')
+    nirsplot_parameters.n_sources = size(rawNirs.SD.SrcPos,1);
+    nirsplot_parameters.n_detectors = size(rawNirs.SD.DetPos,1);
+else
+    nirsplot_parameters.n_sources = size(rawNirs.SD.SrcPos2,1);
+    nirsplot_parameters.n_detectors = size(rawNirs.SD.DetPos2,1);
+end
 nirsplot_parameters.s = rawNirs.s;
 nirsplot_parameters.t = rawNirs.t;
 
@@ -408,6 +431,8 @@ switch ext
         setappdata(main_fig,'rawNirs',rawNirs);
     case '.snirf'
         %setappdata(main_fig,'rawNirs',rawSnirf);
+        setappdata(main_fig,'rawNirs',rawNirs);
+    case '.mat'
         setappdata(main_fig,'rawNirs',rawNirs);
 end
 
@@ -1055,7 +1080,7 @@ end
                     power_array_channels(k) = power;
                     fpower_array_channels(k) = fpower;
                 else
-                    warning('Similarity results close to zero');           
+                    warning('Similarity results close to zero. This is due to the optical signal hitting noise floor or saturation values.');           
                     sci_array_channels(k) = 0;
                     power_array_channels(k) = 0;
                     fpower_array_channels(k) = -1;
