@@ -159,6 +159,28 @@ elseif isa(dotNirsFilePath,'nirs.core.Data')
     rawNirs = struct;
     rawNirs.SD = nirs.util.probe2sd( dotNirsFilePath.probe );
     rawNirs.d = dotNirsFilePath.data;
+    %is it OD data?
+    crit_od_1 = false;
+    crit_od_2 = false;
+    % Mean around zero
+    if max(mean(rawNirs.d))<0.1 %is the max mean lower than 0.1
+        crit_od_1 = true;
+    end
+
+    % Negative values (other than measurement errors)
+    % is the number of negative values greater than the number of channels (N_ch)?
+    % this allows to consider a max of N_ch wrong negative raw values
+    if length(find(rawNirs.d(:)<0)) > size(rawNirs.d,2)
+        crit_od_2 = true;
+    end
+
+    if crit_od_1 && crit_od_2
+        rawNirs.procResult.dod = rawNirs.d;
+    else
+        rawNirs.procResult.dod = [];
+    end
+
+
     rawNirs.t = dotNirsFilePath.time;
     rawNirs.s = false(size(rawNirs.t));
     for icond = 1:length(dotNirsFilePath.stimulus.keys)
@@ -1000,9 +1022,9 @@ end
         scanInfo = nirsplot_param.dotNirsFile;
         dodFlag = nirsplot_param.dodFlag;
         if dodFlag == 1
-            dm = mean(abs(raw.d),1);
-            raw.d = exp(-raw.procResult.dod).*(ones(size(raw.d,1),1)*dm);
-%            raw.d = raw.procResult.dod;
+%            dm = mean(abs(raw.d),1);
+%            raw.d = exp(-raw.procResult.dod).*(ones(size(raw.d,1),1)*dm);
+            raw.d = raw.procResult.dod;
         end
         
         % Set the bandpass filter parameters
