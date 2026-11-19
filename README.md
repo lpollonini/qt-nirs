@@ -5,3 +5,5 @@ QT-NIRS (Quality Testing of Near Infrared Scans)  performs and presents a post-e
 ---
 
 **UPDATE: In order to read SNIRF files, QTNIRS uses the SNIRF class and methods from Homer3. This is a provisional measure to work with SNIRF while we work with an independent solution.**
+
+test
