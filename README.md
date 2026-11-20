@@ -1,9 +1,13 @@
-# QT-NIRS
-
-QT-NIRS (Quality Testing of Near Infrared Scans)  performs and presents a post-experimental assessment of quality across time and optical channels of an fNIRS recording in an intuitive and time-effective manner, and it provides actionable information for the optimization of subsequent steps of the fNIRS analytical pipeline.
+> [!IMPORTANT]
+> # ⚠️ REPOSITORY MOVED
+> **This repository has migrated to [https://github.com/pollonini-lab/qt-nirs](https://github.com/pollonini-lab/qt-nirs).**
+>
+> All active development, issue tracking, pull requests, and releases now take place under **[pollonini-lab](https://github.com/pollonini-lab)**. This legacy repository is no longer maintained.
+>
+> **To update an existing local clone:**
+> ```bash
+> git remote set-url origin [https://github.com/pollonini-lab/qt-nirs.git](https://github.com/pollonini-lab/qt-nirs.git)
+> git pull origin main
+> ```
 
 ---
-
-**UPDATE: In order to read SNIRF files, QTNIRS uses the SNIRF class and methods from Homer3. This is a provisional measure to work with SNIRF while we work with an independent solution.**
-
-test
